@@ -1,0 +1,2 @@
+# pokemon_center_online_bot
+ポケモンセンターオンラインで抽選を自動化するBot
