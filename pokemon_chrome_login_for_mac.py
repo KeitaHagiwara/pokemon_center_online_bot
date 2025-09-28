@@ -14,15 +14,15 @@ def login_pokemon_center(email, password):
     """Pokemon Center Onlineにログイン"""
     driver = None
     try:
-        # Chrome WebDriverのセットアップ
+        # macOS用 Chrome WebDriverのセットアップ
         chrome_options = Options()
 
-        # Profile 4を使用する場合
-        chrome_options.add_argument("--user-data-dir=C:/Users/Administrator/AppData/Local/Google/Chrome/User Data")
-        chrome_options.add_argument("--profile-directory=Profile 4")
+        # macOS用のChromeプロファイル設定（必要に応じてコメントアウトを解除）
+        # chrome_options.add_argument("--user-data-dir=/Users/{username}/Library/Application Support/Google/Chrome")
+        # chrome_options.add_argument("--profile-directory=Default")  # または Profile 1, Profile 2など
 
-        # 既存のChromeセッションとの競合を回避
-        chrome_options.add_argument("--remote-debugging-port=9224")
+        # macOS環境での既存Chromeセッション競合回避
+        chrome_options.add_argument("--remote-debugging-port=9225")  # macOS用ポート番号
         chrome_options.add_argument("--no-first-run")
         chrome_options.add_argument("--no-default-browser-check")
         chrome_options.add_argument("--disable-web-security")
@@ -32,6 +32,7 @@ def login_pokemon_center(email, password):
         chrome_options.add_argument("--disable-backgrounding-occluded-windows")
         chrome_options.add_argument("--disable-renderer-backgrounding")
 
+        # macOS用の安定性向上オプション
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
@@ -39,12 +40,24 @@ def login_pokemon_center(email, password):
         chrome_options.add_argument("--disable-gpu-logging")
         chrome_options.add_argument("--log-level=3")
         chrome_options.add_argument("--silent")
+
+        # macOS特有の設定
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-plugins")
+        # chrome_options.add_argument("--disable-images")  # 画像読み込みを無効化して高速化（必要に応じて有効化）
+        # chrome_options.add_argument("--disable-javascript")  # JavaScriptが必要な場合はコメントアウト
+
+        # 自動化検出回避
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
         chrome_options.add_experimental_option('useAutomationExtension', False)
         chrome_options.add_experimental_option("detach", True)
 
-        service = Service(ChromeDriverManager().install())
-        service.start()
+        # macOS用のUser-Agent設定（必要に応じて）
+        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
+        # service = Service(ChromeDriverManager().install())
+        new_driver = "/Users/keita/.wdm/drivers/chromedriver/mac64/140.0.7339.207/chromedriver-mac-arm64/chromedriver"
+        service = Service(executable_path=new_driver)
 
         # ChromeDriverのタイムアウト設定
         driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -85,6 +98,11 @@ def login_pokemon_center(email, password):
 
     except Exception as e:
         print(f"エラーが発生しました: {e}")
+        print("macOS環境でエラーが発生した場合のトラブルシューティング:")
+        print("1. Chromeが最新版にアップデートされているか確認")
+        print("2. システム環境設定 > セキュリティとプライバシー > プライバシー > オートメーション でChromeの権限を確認")
+        print("3. ChromeDriverとChromeのバージョンが互換性があるか確認")
+        print("4. 他のChromeプロセスが実行中でないか確認")
         return False
     finally:
         if driver:
@@ -96,3 +114,4 @@ if __name__ == "__main__":
         print("ログイン成功")
     else:
         print("ログイン失敗")
+

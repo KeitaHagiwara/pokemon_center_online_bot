@@ -2,3 +2,4 @@ selenium==4.15.2
 webdriver-manager==4.0.1
 python-dotenv==1.0.0
 playwright==1.40.0
+ipython==9.5.0

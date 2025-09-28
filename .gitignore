@@ -40,3 +40,6 @@ wheels/
 # OS
 .DS_Store
 Thumbs.db
+
+# 環境構築ファイル
+.venv/
