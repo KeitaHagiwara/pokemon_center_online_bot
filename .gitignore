@@ -43,3 +43,6 @@ Thumbs.db
 
 # 環境構築ファイル
 .venv/
+
+# credentials
+/credentials/
