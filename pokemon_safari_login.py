@@ -24,9 +24,9 @@ def login_pokemon_center(email, password):
         # SafariDriverはChromeDriverのような詳細なオプション設定はできません
 
         # Safari WebDriverの初期化
-        driver = webdriver.Safari()
-        driver.set_page_load_timeout(30)
-        driver.implicitly_wait(10)
+        # driver = webdriver.Safari()
+        # driver.set_page_load_timeout(30)
+        # driver.implicitly_wait(10)
 
         print("Safari WebDriverが正常に起動しました")
 
@@ -53,11 +53,11 @@ def login_pokemon_center(email, password):
         password_field.send_keys(password)
         time.sleep(3)
 
-        # ログインボタンをクリック
-        print("~~~~~~~~~~Login Button Click ~~~~~~~~")
-        login_button.click()
-        print("~~~~~~~~~~Login Button Clicked ~~~~~~~~")
-        time.sleep(540)
+        # # ログインボタンをクリック
+        # print("~~~~~~~~~~Login Button Click ~~~~~~~~")
+        # login_button.click()
+        # print("~~~~~~~~~~Login Button Clicked ~~~~~~~~")
+        # time.sleep(540)
 
         return True
 
