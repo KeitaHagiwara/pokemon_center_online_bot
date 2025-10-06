@@ -45,4 +45,4 @@ Thumbs.db
 .venv/
 
 # credentials
-/credentials/
+/credentials/*

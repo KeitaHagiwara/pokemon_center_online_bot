@@ -32,9 +32,9 @@ MAIL_COUNTS = 5
 
 # 検索条件 - Pokemon Center関連のメールを検索
 SEARCH_CRITERIA = {
-    'from': "noreply@github.com",  # Pokemon Centerからのメール
+    'from': "info@pokemoncenter-online.com",  # Pokemon Centerからのメール
     'to': "",
-    'subject': ""  # 件名指定なし（全てのPokemon Centerメール）
+    'subject': "[ポケモンセンターオンライン]ログイン用パスコードのお知らせ"  # 件名指定なし（全てのPokemon Centerメール）
 }
 
 # メール保存用ディレクトリ
@@ -200,6 +200,19 @@ def build_search_criteria(query_dict):
             query_string += key + ':' + value + ' '
     return query_string
 
+def get_passode_from_message(message):
+    """
+    メール本文からパスコードを抽出
+
+    Args:
+        message: メール本文
+
+    Returns:
+        抽出されたパスコード文字列、またはNone
+    """
+    import re
+    match = re.search(r'(\d{6})', message)
+    return match.group(1) if match else None
 
 def main():
     """メイン処理：Gmail からメールを取得して表示"""
@@ -233,6 +246,7 @@ def main():
                     print(f'件名: {result["subject"]}')
                     print(f'日付: {result["date"]}')
                     print(f'本文: {result["message"][:300]}{"..." if len(result["message"]) > 300 else ""}')
+                    print(f'パスコード: {get_passode_from_message(result["message"]) or "見つかりませんでした"}')
                     print('─' * 80)
 
                 except Exception as e:
