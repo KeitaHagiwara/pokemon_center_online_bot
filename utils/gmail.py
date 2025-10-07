@@ -205,6 +205,83 @@ class ExtractService:
         match = re.search(r'(\d{6})', message)
         return match.group(1) if match else None
 
+def get_latest_passcode(to_email):
+    """
+    Gmailから最新のパスコードを取得する
+
+    Args:
+        to_email: 送信先メールアドレス
+
+    Returns:
+        抽出されたパスコード文字列、またはNone
+    """
+    try:
+        print("🔑 Gmail認証を開始...")
+        creds = AuthenticationService().authenticate()
+        print("✅ 認証成功!")
+
+        SEARCH_CRITERIA['to'] = to_email
+        extract_service = ExtractService()
+        query = extract_service.build_search_criteria(SEARCH_CRITERIA)
+        print(f"🔍 検索クエリ: {query.strip() if query.strip() else '全てのメール'}")
+
+        client = GmailApiClient(creds)
+        messages = client.get_mail_list(MAIL_COUNTS, query)
+
+        auth_code = None
+        if not messages:
+            print('📭 指定条件のメールが見つかりませんでした。')
+            print('💡 ヒント: Pokemon Centerからのメールがない場合は、SEARCH_CRITERIAを変更してください')
+            print('💡 例: SEARCH_CRITERIA = {"from": "", "to": "", "subject": ""} # すべてのメールを検索')
+        else:
+            print(f'📬 {len(messages)}件のメールを取得しました:\n')
+
+            for i, message in enumerate(messages, 1):
+                message_id = message['id']
+
+                try:
+                    # 件名とメッセージを取得
+                    result = client.get_subject_message(message_id)
+
+                    auth_code = extract_service.get_passcode_from_message(result["message"])
+                    print(f'📩 メール {i}:')
+                    print(f'送信者: {result["sender"]}')
+                    print(f'件名: {result["subject"]}')
+                    print(f'日付: {result["date"]}')
+                    print(f'本文: {result["message"][:300]}{"..." if len(result["message"]) > 300 else ""}')
+                    print(f'パスコード: {auth_code or "見つかりませんでした"}')
+                    print('─' * 80)
+
+                    if auth_code:
+                        print(f'🔑 二段階認証コード: {auth_code}')
+                        break  # 最新のパスコードを取得したらループを抜ける
+                    else:
+                        print('❌ 二段階認証コードが見つかりませんでした。')
+
+                except Exception as e:
+                    print(f'❌ メール {i} の取得に失敗: {e}')
+
+        return auth_code
+
+    except FileNotFoundError as e:
+        print(f"❌ ファイルエラー: {e}")
+        print("\n📋 解決方法:")
+        print("1. Google Cloud ConsoleでOAuth 2.0クライアントIDを作成")
+        print("2. 'デスクトップアプリケーション'として設定")
+        print("3. JSONファイルを ./credentials/oauth_credentials.json として保存")
+        print("4. oauth_gmail_setup.md の詳細手順を参照")
+
+    except GoogleAuthError as e:
+        print(f"❌ 認証エラー: {e}")
+        print("\n📋 解決方法:")
+        print("1. ブラウザでGoogleアカウントにログイン")
+        print("2. アプリの権限を許可")
+        print("3. OAuth同意画面でテストユーザーが追加されているか確認")
+
+    except Exception as e:
+        print(f"❌ 予期しないエラー: {e}")
+
+
 def main(to_email):
     """メイン処理：Gmail からメールを取得して表示"""
 
