@@ -4,8 +4,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from config import EMAIL, PASSWORD
-
 
 def login_pokemon_center(email, password):
     """Pokemon Center Onlineにログイン"""
@@ -74,7 +72,9 @@ def login_pokemon_center(email, password):
 
 
 if __name__ == "__main__":
-    if login_pokemon_center(EMAIL, PASSWORD):
+    email = ""
+    password = ""
+    if login_pokemon_center(email, password):
         print("ログイン成功")
     else:
         print("ログイン失敗")

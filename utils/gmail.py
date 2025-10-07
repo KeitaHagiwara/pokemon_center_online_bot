@@ -23,8 +23,8 @@ from google.auth.exceptions import GoogleAuthError
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-# from utils.common import base64_decode
-from common import base64_decode
+from utils.common import base64_decode
+# from common import base64_decode
 
 # 取得するメール件数
 MAIL_COUNTS = 5

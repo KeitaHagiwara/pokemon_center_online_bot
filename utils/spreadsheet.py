@@ -55,6 +55,42 @@ class SpreadsheetApiClient:
             print("クライアントの作成に失敗しました。")
             return None
 
+    def get_all_records_by_df(self, spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME):
+        """
+        スプレッドシートの全データをDataFrame形式で取得する
+
+        Args:
+            None
+
+        Returns:
+            df (DataFrame): スプレッドシートの全データを格納したDataFrame
+        """
+        client = self.create_client()
+        if not client:
+            print("クライアントの作成に失敗しました。")
+            return None
+
+        try:
+            # スプレッドシートを開く
+            spreadsheet = client.open_by_key(spreadsheet_id)
+
+            # ワークシートを取得
+            worksheet = spreadsheet.worksheet(sheet_name)
+
+            # 全てのデータを取得してDataFrame形式に変換
+            all_data = worksheet.get_all_values()
+
+            # DataFrameに変換（最初の行をヘッダーとして使用）
+            if all_data:
+                df = pd.DataFrame(all_data[1:], columns=all_data[0])
+                return df
+            else:
+                print("データが見つかりません")
+                return None
+
+        except Exception as e:
+            print(f"データ取得エラー: {e}")
+            return None
 
     def get_user_info(self, df):
         """
@@ -75,27 +111,10 @@ class SpreadsheetApiClient:
             user_info_list.append(user_info)
         return user_info_list
 
-spreadsheet_service = SpreadsheetApiClient()
-# クライアントの作成
-client = spreadsheet_service.create_client()
 
-spreadsheet = client.open_by_key(SPREADSHEET_ID)
-
-# ワークシートの取得
-worksheet = spreadsheet.worksheet(SHEET_NAME)
-
-# 全てのデータを取得してDataFrame形式に変換
-all_data = worksheet.get_all_values()
-
-# DataFrameに変換（最初の行をヘッダーとして使用）
-if all_data:
-    df = pd.DataFrame(all_data[1:], columns=all_data[0])
-    print("\nDataFrame形式で取得したデータ:")
-    print(df)
-    print(f"\nDataFrameのサイズ: {df.shape}")
-    print(f"カラム名: {list(df.columns)}")
-else:
-    print("データが見つかりません")
-
-user_info_list = spreadsheet_service.get_user_info(df)
-print(user_info_list)
+if __name__ == "__main__":
+    spreadsheet_service = SpreadsheetApiClient()
+    # スプレッドシートの全データをDataFrame形式で取得
+    df = spreadsheet_service.get_all_records_by_df(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
+    user_info_list = spreadsheet_service.get_user_info(df)
+    print(user_info_list)
