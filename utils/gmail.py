@@ -17,102 +17,92 @@ Gmail API を使用してメールを取得するモジュール
 
 import pickle
 import os.path
-import base64
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.auth.exceptions import GoogleAuthError
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-# Gmail APIのスコープ（読み取り専用）
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+# from utils.common import base64_decode
+from common import base64_decode
 
 # 取得するメール件数
 MAIL_COUNTS = 5
+
+# メール保存用ディレクトリ
+BASE_DIR = 'mail_box'
 
 # 検索条件 - Pokemon Center関連のメールを検索
 SEARCH_CRITERIA = {
     'from': "info@pokemoncenter-online.com",  # Pokemon Centerからのメール
     'to': "",
-    'subject': "[ポケモンセンターオンライン]ログイン用パスコードのお知らせ"  # 件名指定なし（全てのPokemon Centerメール）
+    'subject': "[ポケモンセンターオンライン]ログイン用パスコードのお知らせ"  # パスコードメールに絞り込む
 }
 
-# メール保存用ディレクトリ
-BASE_DIR = 'mail_box'
+credentials_dir_path = os.path.join(os.getcwd(), 'credentials', 'oauth')
+credentials_file_name = 'oauth_credentials.json'
+credentials_file_path = os.path.join(credentials_dir_path, credentials_file_name)
 
-credentials_dir_path = './credentials'
-credentials_file_name = 'pco-bot-credentials.json'
+class AuthenticationService:
+    """Gmail API サービスクラス"""
 
-def authenticate(scope):
-    """
-    Gmail APIの認証を行う
+    def __init__(self):
+        pass
 
-    Args:
-        scope: APIアクセススコープのリスト
+    def authenticate(self):
+        """
+        Gmail APIの認証を行う
 
-    Returns:
-        認証済みクレデンシャル
-    """
-    creds = None
+        Args:
+            None
 
-    # token.pickleファイルからアクセストークンとリフレッシュトークンを読み込み
-    token_path = os.path.join(credentials_dir_path, 'token.pickle')
-    if os.path.exists(token_path):
-        with open(token_path, 'rb') as token:
-            creds = pickle.load(token)
+        Returns:
+            認証済みクレデンシャル
+        """
+        creds = None
 
-    # 有効な認証情報がない場合、ユーザーにログインを求める
-    if not creds or not creds.valid:
-        try:
-            if creds and creds.expired and creds.refresh_token:
-                print("🔄 認証トークンを更新中...")
-                creds.refresh(Request())
-            else:
-                print("🔐 初回認証を開始...")
+        # token.pickleファイルからアクセストークンとリフレッシュトークンを読み込み
+        token_path = os.path.join(credentials_dir_path, 'token.pickle')
+        if os.path.exists(token_path):
+            with open(token_path, 'rb') as token:
+                creds = pickle.load(token)
 
-                # OAuth認証ファイルのパスを確認
-                credentials_file = os.path.join(credentials_dir_path, credentials_file_name)
-                if not os.path.exists(credentials_file):
-                    print(f"❌ 認証ファイルが見つかりません: {credentials_file}")
-                    print("📋 OAuth 2.0クライアントIDを作成し、JSONファイルを配置してください")
-                    raise FileNotFoundError(f"認証ファイルが必要です: {credentials_file}")
+        # 有効な認証情報がない場合、ユーザーにログインを求める
+        if not creds or not creds.valid:
+            try:
+                if creds and creds.expired and creds.refresh_token:
+                    print("🔄 認証トークンを更新中...")
+                    creds.refresh(Request())
+                else:
+                    print("🔐 初回認証を開始...")
 
-                flow = InstalledAppFlow.from_client_secrets_file(credentials_file, scope)
-                print("🌐 ブラウザでGoogleアカウントにログインしてください...")
-                creds = flow.run_local_server(port=0)
+                    # OAuth認証ファイルのパスを確認
+                    if not os.path.exists(credentials_file_path):
+                        print(f"❌ 認証ファイルが見つかりません: {credentials_file_path}")
+                        print("📋 OAuth 2.0クライアントIDを作成し、JSONファイルを配置してください")
+                        raise FileNotFoundError(f"認証ファイルが必要です: {credentials_file_path}")
 
-        except GoogleAuthError as err:
-            print(f'❌ 認証エラー: {err}')
-            raise
+                    # Gmail APIのスコープ（読み取り専用）
+                    scope = ['https://www.googleapis.com/auth/gmail.readonly']
 
-        # 次回実行のために認証情報を保存
-        with open(token_path, 'wb') as token:
-            pickle.dump(creds, token)
-        print("✅ 認証情報を保存しました")
+                    flow = InstalledAppFlow.from_client_secrets_file(credentials_file_path, scope)
+                    print("🌐 ブラウザでGoogleアカウントにログインしてください...")
+                    creds = flow.run_local_server(port=0)
 
-    return creds
+            except GoogleAuthError as err:
+                print(f'❌ 認証エラー: {err}')
+                raise
 
+            # 次回実行のために認証情報を保存
+            with open(token_path, 'wb') as token:
+                pickle.dump(creds, token)
+            print("✅ 認証情報を保存しました")
 
-def base64_decode(b64_message):
-    """
-    Base64エンコードされたメッセージをデコードする
-
-    Args:
-        b64_message: Base64エンコードされたメッセージ
-
-    Returns:
-        デコードされたメッセージ文字列
-    """
-    try:
-        message = base64.urlsafe_b64decode(
-            b64_message + '=' * (-len(b64_message) % 4)).decode(encoding='utf-8')
-        return message
-    except Exception as e:
-        return f"デコードエラー: {e}"
+        return creds
 
 
-class ApiClient(object):
-    """Gmail API クライアント"""
+class GmailApiClient(object):
+    """Gmail管理クラス"""
 
     def __init__(self, credential):
         """
@@ -183,48 +173,52 @@ class ApiClient(object):
 
         return result
 
+class ExtractService:
 
-def build_search_criteria(query_dict):
-    """
-    検索条件辞書から検索クエリ文字列を構築
+    def build_search_criteria(self, query_dict):
+        """
+        検索条件辞書から検索クエリ文字列を構築
 
-    Args:
-        query_dict: 検索条件辞書
+        Args:
+            query_dict: 検索条件辞書
 
-    Returns:
-        Gmail API用検索クエリ文字列
-    """
-    query_string = ''
-    for key, value in query_dict.items():
-        if value:
-            query_string += key + ':' + value + ' '
-    return query_string
+        Returns:
+            Gmail API用検索クエリ文字列
+        """
+        query_string = ''
+        for key, value in query_dict.items():
+            if value:
+                query_string += key + ':' + value + ' '
+        return query_string
 
-def get_passode_from_message(message):
-    """
-    メール本文からパスコードを抽出
+    def get_passcode_from_message(self, message):
+        """
+        メール本文からパスコードを抽出
 
-    Args:
-        message: メール本文
+        Args:
+            message: メール本文
 
-    Returns:
-        抽出されたパスコード文字列、またはNone
-    """
-    import re
-    match = re.search(r'(\d{6})', message)
-    return match.group(1) if match else None
+        Returns:
+            抽出されたパスコード文字列、またはNone
+        """
+        import re
+        match = re.search(r'(\d{6})', message)
+        return match.group(1) if match else None
 
-def main():
+def main(to_email):
     """メイン処理：Gmail からメールを取得して表示"""
+
     try:
         print("🔑 Gmail認証を開始...")
-        creds = authenticate(SCOPES)
+        creds = AuthenticationService().authenticate()
         print("✅ 認証成功!")
 
-        query = build_search_criteria(SEARCH_CRITERIA)
+        SEARCH_CRITERIA['to'] = to_email
+        extract_service = ExtractService()
+        query = extract_service.build_search_criteria(SEARCH_CRITERIA)
         print(f"🔍 検索クエリ: {query.strip() if query.strip() else '全てのメール'}")
 
-        client = ApiClient(creds)
+        client = GmailApiClient(creds)
         messages = client.get_mail_list(MAIL_COUNTS, query)
 
         if not messages:
@@ -246,7 +240,7 @@ def main():
                     print(f'件名: {result["subject"]}')
                     print(f'日付: {result["date"]}')
                     print(f'本文: {result["message"][:300]}{"..." if len(result["message"]) > 300 else ""}')
-                    print(f'パスコード: {get_passode_from_message(result["message"]) or "見つかりませんでした"}')
+                    print(f'パスコード: {extract_service.get_passcode_from_message(result["message"]) or "見つかりませんでした"}')
                     print('─' * 80)
 
                 except Exception as e:
@@ -274,4 +268,7 @@ def main():
 if __name__ == "__main__":
     print("=== Pokemon Center Gmail Bot ===")
     print("📧 Gmail からメールを取得します\n")
-    main()
+
+    to_email = "hagiwara.2016@gmail.com"
+    # to_email = "k.f.hagiwara@gmail.com"
+    main(to_email)
