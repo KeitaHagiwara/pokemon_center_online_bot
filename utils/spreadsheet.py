@@ -2,7 +2,11 @@ import os
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
+
+from utils.common import get_column_number_by_alphabet
 from config import SPREADSHEET_ID, SHEET_NAME, CREDENTIALS_FILE_NAME
+
+HEADER_ROWS = 3  # ヘッダー行数
 
 credentials_file_path = os.path.join(os.getcwd(), 'credentials', 'service_account', CREDENTIALS_FILE_NAME)
 
@@ -83,6 +87,24 @@ class SpreadsheetApiClient:
             print(f"データ取得エラー: {e}")
             return None
 
+    def get_column_dict(self, all_data):
+        """
+        スプレッドシートの全データから列名と列番号の辞書を作成する
+
+        Args:
+            all_data (list): スプレッドシートの全データ
+
+        Returns:
+            dict: 列名と列番号の辞書
+        """
+        column_dict = {}
+        header_row = all_data[HEADER_ROWS - 1]  # ヘッダー行を取得
+
+        for col_index, col_name in enumerate(header_row):
+            column_dict[col_name] = col_index + 1  # 列番号は1始まり
+
+        return column_dict
+
     def extract_user_info(self, all_data, start_row=4, end_row=5):
         """
         スプレッドシートの全データからユーザー情報を抽出する
@@ -95,73 +117,81 @@ class SpreadsheetApiClient:
         Returns:
             list: ユーザー情報のリスト
         """
+
         user_info_list = []
-        password = all_data[1][0]
-        for row in  all_data[start_row - 1:end_row]:
+
+        column_dict = self.get_column_dict(all_data)
+        email_col_index = column_dict.get('メールアドレス')
+        password_col_index = column_dict.get('パスワード')
+        if email_col_index is None or password_col_index is None:
+            print("エラー: 'メールアドレス' または 'パスワード' 列が見つかりません。")
+            return user_info_list
+
+        for row_number, row in enumerate(all_data[start_row - 1:end_row]):
             user_info = {
-                'email': row[1],
-                'password': password
+                'row_number': row_number + start_row,
+                'email': row[email_col_index - 1],
+                'password': row[password_col_index - 1]
             }
             user_info_list.append(user_info)
         return user_info_list
 
-    # def get_all_records_by_df(self, spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME):
-    #     """
-    #     スプレッドシートの全データをDataFrame形式で取得する
+    def get_check_target_product_name(self, all_data, column_alphabet):
+        """
+        指定した行から確認対象の商品名を取得する
 
-    #     Args:
-    #         None
+        Args:
+            all_data (list): スプレッドシートの全データ
+            column_alphabet (str): 行番号（A始まり）
 
-    #     Returns:
-    #         df (DataFrame): スプレッドシートの全データを格納したDataFrame
-    #     """
-    #     client = self.create_client()
-    #     if not client:
-    #         print("クライアントの作成に失敗しました。")
-    #         return None
+        Returns:
+            str: 確認対象の商品名
+        """
+        column_dict = self.get_column_dict(all_data)
+        column_index = get_column_number_by_alphabet(column_alphabet)
 
-    #     try:
-    #         print(f"スプレッドシートID: {spreadsheet_id}, シート名: {sheet_name} からデータを取得中...")
-    #         # スプレッドシートを開く
-    #         spreadsheet = client.open_by_key(spreadsheet_id)
+        target_product_name = None
+        for k, v in column_dict.items():
+            if v == column_index:
+                target_product_name = k
+                break
+        if target_product_name is None:
+            print("エラー: '確認対象商品名' 列が見つかりません。")
+            return None
 
-    #         # ワークシートを取得
-    #         worksheet = spreadsheet.worksheet(sheet_name)
+        return target_product_name
 
-    #         # 全てのデータを取得してDataFrame形式に変換
-    #         all_data = worksheet.get_all_values()
+    def write_to_cell(self, spreadsheet_id, sheet_name, row, column, value):
+        """
+        スプレッドシートの指定したセルに値を書き込む
 
-    #         # DataFrameに変換（最初の行をヘッダーとして使用）
-    #         if all_data:
-    #             df = pd.DataFrame(all_data[1:], columns=all_data[0])
-    #             return df
-    #         else:
-    #             print("データが見つかりません")
-    #             return None
+        Args:
+            spreadsheet_id (str): スプレッドシートID
+            sheet_name (str): シート名
+            row (int): 行番号（1始まり）
+            column (int): 列番号（1始まり）
+            value (str): 書き込む値
+        """
+        client = self.create_client()
+        if not client:
+            print("クライアントの作成に失敗しました。")
+            return
 
-    #     except Exception as e:
-    #         print(f"データ取得エラー: {e}")
-    #         return None
+        try:
+            print(f"スプレッドシートID: {spreadsheet_id}, シート名: {sheet_name} のセル({row}, {column}) に値を書き込み中...")
+            # スプレッドシートを開く
+            spreadsheet = client.open_by_key(spreadsheet_id)
 
-    # def get_user_info(self, df):
-    #     """
-    #     DataFrameからユーザー情報を取得する
+            # ワークシートを取得
+            worksheet = spreadsheet.worksheet(sheet_name)
 
-    #     Args:
-    #         df (DataFrame): ユーザー情報が格納されたDataFrame
+            # 指定したセルに値を書き込む
+            value_formatted = value.strip().replace('\n', '').replace('\r', '')
+            worksheet.update_cell(row, column, value_formatted)
+            print("値の書き込みが完了しました。")
 
-    #     Returns:
-    #         list: ユーザー情報のリスト
-    #     """
-    #     user_info_list = []
-    #     for index, row in df.iterrows():
-    #         user_info = {
-    #             'ID': row['ID'],
-    #             'PW': row['PW']
-    #         }
-    #         user_info_list.append(user_info)
-    #     return user_info_list
-
+        except Exception as e:
+            print(f"セル書き込みエラー: {e}")
 
 if __name__ == "__main__":
     spreadsheet_service = SpreadsheetApiClient()
