@@ -1,0 +1,2 @@
+appium &
+python initialize.py
