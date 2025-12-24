@@ -8,20 +8,28 @@ from selenium.webdriver.support import expected_conditions as EC
 from scraping.ios.appium_utilities import AppiumUtilities
 from utils.spreadsheet import SpreadsheetApiClient
 from utils.gmail import get_latest_passcode
-from utils.common import pad_with_zeros
+from utils.common import get_column_number_by_alphabet
 from config import SPREADSHEET_ID, SHEET_NAME
 
 MAX_RETRY_LOGIN = 3
 MAX_RETRY_PASSCODE = 10
 
 
-def main(appium_utils, email, password, top_p=1):
+def main(driver, appium_utils, user_info, top_p=1, write_col='AA'):
     """メイン処理"""
 
-    driver = appium_utils.driver
+    row_number = user_info["row_number"]
+    email = user_info["email"]
+    password = user_info["password"]
 
+    print(f"===== ユーザー情報 =====")
+    print(f"行番号: {row_number}")
     print(f"email: {email}")
     print(f"password: {password}")
+
+    # IPアドレスの確認
+    driver.get("https://www.cman.jp/network/support/go_access.cgi")
+    time.sleep(5)
 
     try:
 
@@ -134,7 +142,7 @@ def main(appium_utils, email, password, top_p=1):
                 time.sleep(random.uniform(1, 3))  # アニメーション完了まで待機
 
                 # 2. radioボタンを安全に取得してクリック
-                print("radioボタンを取得中...")
+                print("抽選対象の商品チェックボックスを取得中...")
                 item_checkboxes = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'radio', attempt=index)
                 if not appium_utils.safe_click(item_checkboxes, 0, "radioボタン"):
                     raise ValueError("商品選択のラジオボタンのクリックに失敗しました")
@@ -143,29 +151,32 @@ def main(appium_utils, email, password, top_p=1):
 
                 # 3. 同意チェックボックスを安全に取得してクリック
                 print("同意チェックボックスを取得中...")
-                for i in range(3, 10):
-                    tag_id = f"L{pad_with_zeros(f'{i}{index+1}')}"
-                    try:
-                        agree_checkbox = WebDriverWait(driver, 2).until(
-                            EC.presence_of_element_located((AppiumBy.ID, tag_id))
-                        )
-                        if agree_checkbox.is_displayed():
-                            print(f"同意チェックボックスを発見: ID={tag_id}")
-                            break
-                    except:
-                        print(f"同意チェックボックスを発見できませんでした: ID={tag_id}")
-                        continue
+                agree_checkboxes = appium_utils.safe_find_elements(
+                    AppiumBy.CSS_SELECTOR,
+                    '.agreementArea > .checkboxWrapper > [type="checkbox"]',
+                    attempt=index
+                )
+                if not agree_checkboxes or len(agree_checkboxes) == 0:
+                    raise ValueError("同意チェックボックスが見つかりませんでした")
+
+                agree_checkbox = agree_checkboxes[0]
+                print(f"同意チェックボックスを発見: {agree_checkbox.get_attribute('id')}")
                 agree_checkbox.click()
                 time.sleep(random.uniform(1, 3))
 
                 # 4. モーダル開くボタンを安全にクリック
                 print("モーダル開くボタンをクリック中...")
-                apply_buttons = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'popup-modal', attempt=index)
+                apply_buttons = appium_utils.safe_find_elements(
+                    AppiumBy.CSS_SELECTOR,
+                    '.popup-modal.on',
+                    attempt=index
+                )
                 if apply_buttons[0].get_attribute("innerText") == "キャンセルする":
                     raise ValueError("既に応募済みの可能性があります")
 
-                if not appium_utils.safe_click(apply_buttons, 0, "応募するボタン"):
-                    raise ValueError("応募するボタンのクリックに失敗しました")
+                print("応募するボタンをクリック中...")
+                apply_buttons[0].click()
+                print("✅ 応募するボタンをクリックしました")
 
                 time.sleep(random.uniform(1, 3))
 
@@ -176,6 +187,17 @@ def main(appium_utils, email, password, top_p=1):
                 else:
                     print("❌ 申し込みボタンのクリックに失敗しました")
                     continue
+
+                # スプレッドシートに結果を書き込む
+                ss = SpreadsheetApiClient()
+                write_col_number = get_column_number_by_alphabet(write_col) + index
+                ss.write_to_cell(
+                    spreadsheet_id=SPREADSHEET_ID,
+                    sheet_name=SHEET_NAME,
+                    row=row_number,
+                    column=write_col_number,
+                    value="応募済み"
+                )
 
                 time.sleep(random.uniform(10, 15))
                 print(f"🎉 抽選申し込み {index + 1} 完了!")
@@ -211,15 +233,16 @@ def main(appium_utils, email, password, top_p=1):
 
 if __name__ == '__main__':
     TOP_P = 2 # 抽選申し込みを行う上位件件数
+    WRITE_COL = 'AA'  # 抽選申し込み結果を書き込む列
 
-    START_ROW = 13
-    END_ROW = 13
+    START_ROW = 27
+    END_ROW = 75
 
     # スプレッドシートからユーザー情報を取得する
     ss = SpreadsheetApiClient()
     # スプレッドシートの全データをDataFrame形式で取得
     all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
-    user_info_list = ss.extract_user_info(all_data, START_ROW, END_ROW)
+    user_info_list = ss.extract_user_info(all_data, START_ROW, END_ROW, WRITE_COL)
     print(json.dumps(user_info_list, indent=2, ensure_ascii=False))
     print("---------------")
     print(f"合計ユーザー数: {len(user_info_list)}")
@@ -230,8 +253,10 @@ if __name__ == '__main__':
 
     print("Safariを起動しました")
 
-    for user_info in user_info_list:
-        email = user_info["email"]
-        password = user_info["password"]
+    driver = appium_utils.driver
 
-        main(appium_utils, email, password, TOP_P)
+    for user_info in user_info_list:
+        if not user_info.get("email") or not user_info.get("password"):
+            print(f"❌ emailまたはpasswordが未設定のためスキップします: {user_info}")
+            continue
+        main(driver, appium_utils, user_info, TOP_P, WRITE_COL)

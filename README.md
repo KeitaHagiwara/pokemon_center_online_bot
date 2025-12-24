@@ -10,8 +10,19 @@ npm install -g appium
 # Appium XCUITest Driverのインストール
 appium driver install xcuitest
 
+# 追加ツールのインストール
+brew install carthage
+brew install libimobiledevice
+brew install ios-deploy
+
 # Python Appiumクライアントのインストール
 pip install Appium-Python-Client selenium
+```
+
+## 接続されているiOSデバイスの確認
+```
+# 接続されているiOSデバイスのUDIDを表示
+idevice_id -l
 ```
 
 ## XCodeの設定

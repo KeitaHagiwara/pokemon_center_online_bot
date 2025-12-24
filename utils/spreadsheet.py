@@ -105,7 +105,7 @@ class SpreadsheetApiClient:
 
         return column_dict
 
-    def extract_user_info(self, all_data, start_row=4, end_row=5):
+    def extract_user_info(self, all_data, start_row=4, end_row=5, write_col=None):
         """
         スプレッドシートの全データからユーザー情報を抽出する
 
@@ -123,11 +123,19 @@ class SpreadsheetApiClient:
         column_dict = self.get_column_dict(all_data)
         email_col_index = column_dict.get('メールアドレス')
         password_col_index = column_dict.get('パスワード')
+
         if email_col_index is None or password_col_index is None:
             print("エラー: 'メールアドレス' または 'パスワード' 列が見つかりません。")
             return user_info_list
 
         for row_number, row in enumerate(all_data[start_row - 1:end_row]):
+            # 書き込み対象の列が指定されている場合、既に値が入っている行はスキップ
+            if write_col:
+                target_column_index = get_column_number_by_alphabet(write_col)
+                if row[target_column_index - 1].strip() != "":
+                    print(f"スキップ: 行 {row_number + start_row} は既に処理済みです。")
+                    continue
+
             user_info = {
                 'row_number': row_number + start_row,
                 'email': row[email_col_index - 1],

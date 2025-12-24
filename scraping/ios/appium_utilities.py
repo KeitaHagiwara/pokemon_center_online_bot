@@ -1,3 +1,5 @@
+import os
+import sys
 import time, random
 from appium import webdriver
 from appium.options.ios import XCUITestOptions
@@ -5,6 +7,7 @@ from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver import ActionChains
+from config import PLATFORM_VERSION, DEVICE_NAME, UDID, XCODE_ORG_ID, XCODE_BUNDLE_ID
 
 class AppiumUtilities:
     """
@@ -18,56 +21,121 @@ class AppiumUtilities:
         """Appiumドライバーをセットアップ"""
         options = XCUITestOptions()
 
-        # iOSシミュレータの設定
         options.platform_name = 'iOS'
-        options.platform_version = '18.0'  # 使用するiOSバージョン
-        options.device_name = 'iPhone SE (3rd generation)'  # シミュレータのデバイス名
-        options.browser_name = 'Safari'
+        options.platform_version = PLATFORM_VERSION  # iOSバージョンに合わせて変更
+        options.device_name = DEVICE_NAME  # デバイス名
+        options.udid = UDID  # `idevice_id -l` で確認
         options.automation_name = 'XCUITest'
 
-        # オプション設定
-        options.new_command_timeout = 300
-        options.no_reset = True
+        # Safariブラウザを使う場合
+        options.browser_name = 'Safari'
+
+        # WebDriverAgent設定（実機の場合必須）
+        options.xcode_org_id = XCODE_ORG_ID  # あなたのTeam ID
+        options.xcode_signing_id = 'Apple Development'  # Apple Developmentに変更
+        options.update_wda_bundleid = XCODE_BUNDLE_ID  # 一意なBundle ID
+
+        # 【重要】実機用の追加設定
+        options.allow_provisioning_device_registration = True  # デバイス登録を許可
+        options.webdriver_agent_url = None  # 自動検出させる
+        options.clear_system_files = True  # システムファイルをクリア
+
+        # デバッグ用の追加設定
+        options.show_xcode_log = False  # Xcodeのビルドログを非表示（見やすくするため）
+        options.use_prebuilt_wda = True  # ビルド済みWDAを使用（高速化）
+        options.use_new_wda = False  # 既存のWDAセッションを再利用
+        options.wda_launch_timeout = 120000  # WDA起動タイムアウト(ms)を延長
+        options.wda_local_port = 8100  # WDAのローカルポート
+        options.wda_connection_timeout = 60000  # WDA接続タイムアウト(ms)
+
+        # iOS 18対応の設定
+        options.should_use_compact_responses = False  # コンパクトレスポンスを無効化
+        options.element_response_attributes = 'type,label'  # 必要な属性のみ取得
 
         # Appiumサーバーに接続
-        driver = webdriver.Remote('http://localhost:4723', options=options)
+        # driver = webdriver.Remote('http://localhost:4723', options=options)
+        # Appiumサーバーに接続
+        print("Appiumサーバーへの接続を試みています...")
+        print("WebDriverAgentをビルド・起動しています（初回は2-3分かかります）...")
+        try:
+            driver = webdriver.Remote('http://localhost:4723', options=options)
+            print("✅ Appiumサーバーへの接続に成功しました")
+            print("✅ WebDriverAgentが起動しました")
+        except Exception as e:
+            print("\n❌ Appiumサーバーへの接続に失敗しました")
+            print("\n【考えられる原因】")
+            print("1. Appiumサーバーが起動していない")
+            print("2. WebDriverAgentのビルドに失敗")
+            print("3. デバイスの証明書が信頼されていない")
+            print("\n【解決方法】")
+            print("1. 別のターミナルでAppiumサーバーを起動:")
+            print("   appium --log-level debug")
+            print("\n2. iPhoneで証明書を信頼:")
+            print("   設定 > 一般 > VPNとデバイス管理 > 'Keita Hagiwara' > 信頼")
+            print("\n3. デバイスがロック解除されていることを確認")
+            print(f"\n【詳細エラー】{e}")
+            sys.exit(1)
 
         return driver
 
     def delete_browser_page(self):
-        """Safariのブラウザページ（タブ）を削除"""
-        print("Safariのブラウザページを削除中...")
+        """Safariのセッションをクリア（アプリは終了しない）"""
+        print("Safariのセッションをクリア中...")
 
         try:
-            # 方法1: JavaScriptでストレージとキャッシュをクリア
+            # 方法1: ポケモンセンターオンラインのトップページに遷移
+            # （about:blankではストレージ操作ができないため、実際のサイトに遷移）
             try:
+                print("ポケモンセンターオンラインのトップページに遷移中...")
+                self.driver.get("https://www.pokemoncenter-online.com/")
+                time.sleep(2)
+                print("✅ トップページに遷移しました")
+            except Exception as e:
+                print(f"トップページ遷移エラー: {e}")
+
+            # 方法2: JavaScriptでストレージとCookieをクリア
+            try:
+                print("JavaScriptでストレージをクリア中...")
                 self.driver.execute_script("localStorage.clear();")
                 self.driver.execute_script("sessionStorage.clear();")
                 print("✅ ローカルストレージとセッションストレージをクリアしました")
             except Exception as e:
-                print(f"ストレージクリアエラー: {e}")
+                print(f"⚠️ ストレージクリアエラー: {e}")
+                # エラーが出ても続行
 
-            # 方法2: Cookieを削除
+            # 方法3: Cookieを削除（document.cookie使用）
             try:
-                self.driver.delete_all_cookies()
-                print("✅ すべてのCookieを削除しました")
+                print("JavaScriptでCookieを削除中...")
+                self.driver.execute_script("""
+                    var cookies = document.cookie.split(";");
+                    for (var i = 0; i < cookies.length; i++) {
+                        var cookie = cookies[i];
+                        var eqPos = cookie.indexOf("=");
+                        var name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+                        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.pokemoncenter-online.com";
+                    }
+                """)
+                print("✅ Cookieをクリアしました")
             except Exception as e:
-                print(f"Cookie削除エラー: {e}")
+                print(f"⚠️ Cookie削除エラー: {e}")
+                # エラーが出ても続行
 
-            # 方法3: 代替手段 - blank pageに遷移してからリロード
+            # 方法4: 空白ページに遷移（クリーンな状態にする）
             try:
+                print("空白ページに遷移中...")
                 self.driver.get("about:blank")
                 time.sleep(1)
                 print("✅ 空白ページに遷移しました")
             except Exception as e:
-                print(f"空白ページ遷移エラー: {e}")
+                print(f"⚠️ 空白ページ遷移エラー: {e}")
 
-            print("✅ ブラウザページの削除処理が完了しました")
-            return True
+            print("✅ Safariセッションのクリア処理が完了しました")
 
         except Exception as e:
-            print(f"❌ ブラウザページ削除処理でエラーが発生: {e}")
-            return False
+            print(f"❌ Safariセッションクリア処理でエラーが発生: {e}")
+            print("⚠️ エラーが発生しましたが、処理を続行します")
+            # エラーが発生してもraiseしない（次の処理を続行）
 
     def scroll_down(self):
         """画面を下にスクロール"""
@@ -433,26 +501,54 @@ class AppiumUtilities:
         print(f"クリック対象候補: {len(clickable_targets)}個（座標タップ優先）")
 
         # 最優先：座標でのタップ（成功実績があるため）
-        try:
-            print(f"\n--- 最優先: 座標タップ ---")
-            location = target_button.location
-            size = target_button.size
-            center_x = location['x'] + size['width'] / 2
-            center_y = location['y'] + size['height'] / 2
+        max_retries = 3
+        for retry in range(max_retries):
+            try:
+                print(f"\n--- 最優先: 座標タップ (試行 {retry + 1}/{max_retries}) ---")
+                location = target_button.location
+                size = target_button.size
+                center_x = location['x'] + size['width'] / 2
+                center_y = location['y'] + size['height'] / 2
 
-            print(f"座標タップ実行: ({int(center_x)}, {int(center_y)})")
-            self.driver.tap([(int(center_x), int(center_y))])
-            time.sleep(random.uniform(1, 3))
+                print(f"座標タップ実行: ({int(center_x)}, {int(center_y)})")
+                self.driver.tap([(int(center_x), int(center_y))])
+                time.sleep(random.uniform(1, 3))
 
-            # if target_button.get_attribute('checked') == 'true':
-            #     print(f"✅ 座標タップでラジオボタンのクリックが成功しました")
-            #     return True
-            # else:
-            #     print(f"⚠️ 座標タップ: ラジオボタンがチェックされていません")
-            return True  # 座標タップのみで成功とみなす
+                # if target_button.get_attribute('checked') == 'true':
+                #     print(f"✅ 座標タップでラジオボタンのクリックが成功しました")
+                #     return True
+                # else:
+                #     print(f"⚠️ 座標タップ: ラジオボタンがチェックされていません")
+                print(f"✅ 座標タップが成功しました")
+                return True  # 座標タップのみで成功とみなす
 
-        except Exception as e:
-            print(f"❌ 座標タップ失敗: {e}")
+            except Exception as e:
+                error_msg = str(e)
+                print(f"❌ 座標タップ失敗 (試行 {retry + 1}/{max_retries}): {error_msg}")
+
+                # WebDriverAgent接続エラーの場合
+                if "ECONNREFUSED" in error_msg or "connect" in error_msg.lower():
+                    print("⚠️ WebDriverAgentとの接続が切れています")
+                    print("【対処方法】")
+                    print("1. iPhoneの画面で'Automation Running'が表示されているか確認")
+                    print("2. Appiumサーバーを再起動してください")
+                    print("3. スクリプトを最初から実行し直してください")
+
+                    if retry < max_retries - 1:
+                        wait_time = (retry + 1) * 2
+                        print(f"⏳ {wait_time}秒待機してから再試行します...")
+                        time.sleep(wait_time)
+                    else:
+                        print("❌ 最大リトライ回数に達しました。処理を中断します。")
+                        raise
+                else:
+                    # その他のエラーの場合は短い待機後にリトライ
+                    if retry < max_retries - 1:
+                        print(f"⏳ 2秒待機してから再試行します...")
+                        time.sleep(2)
+                    else:
+                        print("❌ 座標タップに失敗しました")
+                        break
 
         # # 代替手段：各対象に対してクリックを試行
         # for target_name, target_element in clickable_targets:
