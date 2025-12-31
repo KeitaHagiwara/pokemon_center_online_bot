@@ -28,8 +28,8 @@ def main(driver, appium_utils, user_info, top_p=1, write_col='AA'):
     print(f"password: {password}")
 
     # IPアドレスの確認
-    driver.get("https://www.cman.jp/network/support/go_access.cgi")
-    time.sleep(5)
+    # driver.get("https://www.cman.jp/network/support/go_access.cgi")
+    # time.sleep(5)
 
     try:
 
