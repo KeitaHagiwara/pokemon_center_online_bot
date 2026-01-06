@@ -15,11 +15,12 @@ MAX_RETRY_LOGIN = 3
 MAX_RETRY_PASSCODE = 10
 
 
-def main(appium_utils, email, password, target_product_name):
+def main(driver, appium_utils, user_info, target_product_name_dict):
     """メイン処理"""
 
-    driver = appium_utils.driver
-
+    row_number = user_info["row_number"]
+    email = user_info["email"]
+    password = user_info["password"]
     print(f"email: {email}")
     print(f"password: {password}")
 
@@ -99,31 +100,43 @@ def main(appium_utils, email, password, target_product_name):
         time.sleep(random.uniform(5, 10))
 
         target_lottery_result = None
-        for index in range(10):
-            print(f"抽選結果を取得します (index={index})")
 
-            try:
-                # 対象の商品かをチェックする
-                product_names = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'ttl', attempt=index)
-                product_name = product_names[index]
-                print(product_name.get_attribute("innerText"))
-                if target_product_name not in product_name.get_attribute("innerText"):
-                    print(f"❌ {index+1}個目の商品は、今回の結果取得対象の抽選ではありません")
-                    continue
-                else:
-                    print(f"✅ {index+1}個目の商品は、今回の結果取得対象の抽選です")
-                    # 抽選結果を安全に取得
-                    lottery_results = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'txtBox01', attempt=index)
-                    target_lottery_result = lottery_results[index].get_attribute('innerText')
+        for target_product_name, target_product_column in target_product_name_dict.items():
+            print(f"\n=== 抽選結果確認対象商品: {target_product_name} ===")
 
-                    print(f"抽選結果: {target_lottery_result}")
-                    return target_lottery_result
+            for index in range(5):
+                print(f"抽選結果を取得します (index={index})")
 
-            except ValueError as ve:
-                print(f"❌ {ve}")
+                try:
+                    # 対象の商品かをチェックする
+                    product_names = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'ttl', attempt=index)
+                    product_name = product_names[index]
+                    print(product_name.get_attribute("innerText"))
+                    if target_product_name not in product_name.get_attribute("innerText"):
+                        print(f"❌ {index+1}個目の商品は、今回の結果取得対象の抽選ではありません")
+                        continue
+                    else:
+                        print(f"✅ {index+1}個目の商品は、今回の結果取得対象の抽選です")
+                        # 抽選結果を安全に取得
+                        lottery_results = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'txtBox01', attempt=index)
+                        target_lottery_result = lottery_results[index].get_attribute('innerText')
 
-            except Exception as e:
-                print(f"❌ 抽選申し込み {index + 1} でエラーが発生: {e}")
+                        print(f"抽選結果: {target_lottery_result}")
+                        # 抽選結果が「当選」の場合のみスプレッドシートに書き込む
+                        # if check_result == "当選":
+                        ss.write_to_cell(
+                            spreadsheet_id=SPREADSHEET_ID,
+                            sheet_name=SHEET_NAME,
+                            row=row_number,
+                            column=target_product_column,
+                            value=target_lottery_result
+                        )
+
+                except ValueError as ve:
+                    print(f"❌ {ve}")
+
+                except Exception as e:
+                    print(f"❌ 抽選申し込み {index + 1} でエラーが発生: {e}")
 
     except Exception as e:
         print(f"エラーが発生しました: {e}")
@@ -150,9 +163,12 @@ def main(appium_utils, email, password, target_product_name):
 
 if __name__ == '__main__':
 
-    START_ROW = 7
-    END_ROW = 7
-    column_alphabet = "S"  # 抽選結果を記入する列
+    TOP_P = 2 # 抽選申し込みを行う上位件件数
+    WRITE_COL = 'AA'  # 抽選申し込み結果を書き込む列
+
+
+    START_ROW = 6
+    END_ROW = 75
 
     # スプレッドシートからユーザー情報を取得する
     ss = SpreadsheetApiClient()
@@ -170,22 +186,18 @@ if __name__ == '__main__':
 
     print("Safariを起動しました")
 
-    target_product_name = ss.get_check_target_product_name(all_data, column_alphabet)
-    print(f"確認対象商品名: {target_product_name}")
+    driver = appium_utils.driver
+
+
+    target_product_name_dict = ss.get_check_target_product_name_dict(all_data, WRITE_COL, TOP_P)
+    print(f"確認対象商品名: {target_product_name_dict}")
+    if not target_product_name_dict:
+        raise Exception("確認対象商品名が取得できなかったため、処理を中止します。")
+
 
     for user_info in user_info_list:
-        row_number = user_info["row_number"]
-        email = user_info["email"]
-        password = user_info["password"]
+        if not user_info.get("email") or not user_info.get("password"):
+            print(f"❌ emailまたはpasswordが未設定のためスキップします: {user_info}")
+            continue
 
-        check_result = main(appium_utils, email, password, target_product_name)
-
-        # 抽選結果が「当選」の場合のみスプレッドシートに書き込む
-        # if check_result == "当選":
-        ss.write_to_cell(
-            spreadsheet_id=SPREADSHEET_ID,
-            sheet_name=SHEET_NAME,
-            row=row_number,
-            column=get_column_number_by_alphabet(column_alphabet),
-            value=check_result
-        )
+        main(driver, appium_utils, user_info, target_product_name_dict)

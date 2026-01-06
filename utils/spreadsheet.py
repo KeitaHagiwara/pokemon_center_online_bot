@@ -144,30 +144,31 @@ class SpreadsheetApiClient:
             user_info_list.append(user_info)
         return user_info_list
 
-    def get_check_target_product_name(self, all_data, column_alphabet):
+    def get_check_target_product_name_dict(self, all_data, column_alphabet, top_p):
         """
         指定した行から確認対象の商品名を取得する
 
         Args:
             all_data (list): スプレッドシートの全データ
             column_alphabet (str): 行番号（A始まり）
+            top_p (int): 上位件数
 
         Returns:
-            str: 確認対象の商品名
+            dict: 確認対象の商品名の辞書
         """
         column_dict = self.get_column_dict(all_data)
         column_index = get_column_number_by_alphabet(column_alphabet)
 
-        target_product_name = None
-        for k, v in column_dict.items():
-            if v == column_index:
-                target_product_name = k
-                break
-        if target_product_name is None:
-            print("エラー: '確認対象商品名' 列が見つかりません。")
-            return None
+        target_product_name_dict = {}
+        # column_alphabetから始まってtop_p個分のカラムを取得
+        for i in range(top_p):
+            target_col_index = column_index + i
+            for k, v in column_dict.items():
+                if v == target_col_index:
+                    target_product_name_dict[k] = v
+                    break
 
-        return target_product_name
+        return target_product_name_dict
 
     def write_to_cell(self, spreadsheet_id, sheet_name, row, column, value):
         """
