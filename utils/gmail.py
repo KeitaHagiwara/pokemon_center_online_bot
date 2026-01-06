@@ -15,6 +15,8 @@ Gmail API を使用してメールを取得するモジュール
 日付: 2025年9月30日
 """
 
+import re
+import datetime
 import pickle
 import os.path
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -24,6 +26,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from utils.common import base64_decode
+from email.utils import parsedate_to_datetime
 from config import OAUTH_FILE_NAME, OAUTH_TOKEN_FILE_NAME
 # from common import base64_decode
 
@@ -39,6 +42,11 @@ SEARCH_CRITERIA = {
     'from': '',
     'to': '',
     'subject': '[ポケモンセンターオンライン]ログイン用パスコードのお知らせ'  # パスコードメールに絞り込む
+}
+
+EMAIL_TYPE_DICT = {
+    'passcode': {'name': '二段階認証コード', 'icon': '🔑'},
+    'auth_link': {'name': '認証リンク', 'icon': '🔗'}
 }
 
 credentials_dir_path = os.path.join(os.getcwd(), 'credentials', 'oauth')
@@ -211,6 +219,20 @@ class ExtractService:
         match = re.search(r'(\d{6})', message)
         return match.group(1) if match else None
 
+    def get_auth_link_from_message(self, message):
+        """
+        メール本文から認証リンクを抽出
+
+        Args:
+            message: メール本文
+
+        Returns:
+            抽出された認証リンク文字列、またはNone
+        """
+        import re
+        match = re.search(r'(https?://[^\s]+)', message)
+        return match.group(1) if match else None
+
 def get_latest_passcode(to_email):
     """
     Gmailから最新のパスコードを取得する（5分以内のメールのみ）
@@ -222,8 +244,6 @@ def get_latest_passcode(to_email):
         抽出されたパスコード文字列、またはNone
     """
     try:
-        import datetime
-        from email.utils import parsedate_to_datetime
 
         print("🔑 Gmail認証を開始...")
         creds = AuthenticationService().authenticate()
@@ -234,7 +254,9 @@ def get_latest_passcode(to_email):
         one_minute_ago = now - datetime.timedelta(minutes=5)
         print(f"⏰ 検索対象時間: {one_minute_ago.strftime('%Y-%m-%d %H:%M:%S')} 以降")
 
+        # 検索条件を設定する
         SEARCH_CRITERIA['to'] = to_email
+
         extract_service = ExtractService()
         query = extract_service.build_search_criteria(SEARCH_CRITERIA)
         print(f"🔍 検索クエリ: {query.strip() if query.strip() else '全てのメール'}")
@@ -323,6 +345,143 @@ def get_latest_passcode(to_email):
                     print('❌ 5分以内のメールから二段階認証コードが見つかりませんでした。')
 
         return auth_code
+
+    except FileNotFoundError as e:
+        print(f"❌ ファイルエラー: {e}")
+        print("\n📋 解決方法:")
+        print("1. Google Cloud ConsoleでOAuth 2.0クライアントIDを作成")
+        print("2. 'デスクトップアプリケーション'として設定")
+        print("3. JSONファイルを ./credentials/oauth_credentials.json として保存")
+        print("4. oauth_gmail_setup.md の詳細手順を参照")
+
+    except GoogleAuthError as e:
+        print(f"❌ 認証エラー: {e}")
+        print("\n📋 解決方法:")
+        print("1. ブラウザでGoogleアカウントにログイン")
+        print("2. アプリの権限を許可")
+        print("3. OAuth同意画面でテストユーザーが追加されているか確認")
+
+    except Exception as e:
+        print(f"❌ 予期しないエラー: {e}")
+
+def extract_target_str_from_gmail_text_in_5min(to_email, subject_keyword, email_type="passcode"):
+    """
+    Gmailから欲しい情報を抽出する（5分以内のメールのみ）
+
+    Args:
+        to_email: 送信先メールアドレス
+        subject_keyword: 件名キーワード
+        email_type: 抽出する情報の種類 ("passcode" または "auth_link")
+
+    Returns:
+        抽出されたパスコード文字列、またはNone
+    """
+    try:
+
+        print("🔑 Gmail認証を開始...")
+        creds = AuthenticationService().authenticate()
+        print("✅ 認証成功!")
+
+        # 現在時刻から5分前の時刻を計算
+        now = datetime.datetime.now(datetime.timezone.utc)
+        one_minute_ago = now - datetime.timedelta(minutes=5)
+        print(f"⏰ 検索対象時間: {one_minute_ago.strftime('%Y-%m-%d %H:%M:%S')} 以降")
+
+        # 検索条件を設定する
+        SEARCH_CRITERIA['to'] = to_email
+        SEARCH_CRITERIA['subject'] = subject_keyword
+
+        extract_service = ExtractService()
+        query = extract_service.build_search_criteria(SEARCH_CRITERIA)
+        print(f"🔍 検索クエリ: {query.strip() if query.strip() else '全てのメール'}")
+
+        client = GmailApiClient(creds)
+        messages = client.get_mail_list(MAIL_COUNTS, query)
+
+        target_str = None
+        recent_messages = []  # 5分以内のメールを格納
+        if not messages:
+            print('📭 指定条件のメールが見つかりませんでした。')
+            print('💡 ヒント: Pokemon Centerからのメールがない場合は、SEARCH_CRITERIAを変更してください')
+            print('💡 例: SEARCH_CRITERIA = {"from": "", "to": "", "subject": ""} # すべてのメールを検索')
+        else:
+            print(f'📬 {len(messages)}件のメールを取得しました。5分以内のメールを絞り込み中...\n')
+
+            # メールの日時チェックと絞り込み
+            for i, message in enumerate(messages, 1):
+                message_id = message['id']
+
+                try:
+                    # 件名とメッセージを取得
+                    result = client.get_subject_message(message_id)
+
+                    # メールの日時を解析
+                    try:
+                        email_date_str = result["date"]
+                        # RFC2822形式の日時文字列をパース
+                        email_datetime = parsedate_to_datetime(email_date_str)
+
+                        # UTCに変換（タイムゾーン情報がない場合はUTCとして扱う）
+                        if email_datetime.tzinfo is None:
+                            email_datetime = email_datetime.replace(tzinfo=datetime.timezone.utc)
+                        else:
+                            email_datetime = email_datetime.astimezone(datetime.timezone.utc)
+
+                        print(f'📧 メール {i}: {email_datetime.strftime("%Y-%m-%d %H:%M:%S UTC")}')
+
+                        # 5分以内のメールかチェック
+                        if email_datetime >= one_minute_ago:
+                            print(f'✅ 5分以内のメールです！')
+                            recent_messages.append((message_id, result, email_datetime))
+                        else:
+                            time_diff = (now - email_datetime).total_seconds()
+                            print(f'⏰ {time_diff:.0f}秒前のメールです（対象外）')
+
+                    except Exception as date_error:
+                        print(f'⚠️  日時の解析に失敗: {date_error}')
+                        print(f'   生の日時データ: {result["date"]}')
+                        # 日時解析に失敗した場合は対象に含める（安全のため）
+                        recent_messages.append((message_id, result, None))
+
+                except Exception as e:
+                    print(f'❌ メール {i} の取得に失敗: {e}')
+
+            # 5分以内のメールからパスコードを抽出
+            if not recent_messages:
+                print('📭 5分以内に受信したメールが見つかりませんでした。')
+            else:
+                print(f'\n🎯 5分以内のメール: {len(recent_messages)}件')
+                print('─' * 80)
+
+                # 最新のメールから順に処理（日時でソート）
+                recent_messages.sort(key=lambda x: x[2] if x[2] else datetime.datetime.min.replace(tzinfo=datetime.timezone.utc), reverse=True)
+
+                for i, (message_id, result, email_datetime) in enumerate(recent_messages, 1):
+                    # 抽出するロジックが異なるため、場合分け
+                    if email_type == "passcode":
+                        target_str = extract_service.get_passcode_from_message(result["message"])
+                    elif email_type == "auth_link":
+                        target_str = extract_service.get_auth_link_from_message(result["message"])
+
+                    print(f'📩 最近のメール {i}:')
+                    print(f'送信者: {result["sender"]}')
+                    print(f'件名: {result["subject"]}')
+                    print(f'日付: {result["date"]}')
+                    if email_datetime:
+                        time_diff = (now - email_datetime).total_seconds()
+                        print(f'受信: {time_diff:.0f}秒前')
+                    print(f'本文: {result["message"][:300]}{"..." if len(result["message"]) > 300 else ""}')
+                    print(f'{EMAIL_TYPE_DICT[email_type]["name"]}: {target_str or "見つかりませんでした"}')
+                    print('─' * 80)
+
+                    if target_str:
+                        print(f'{EMAIL_TYPE_DICT[email_type]["icon"]} {EMAIL_TYPE_DICT[email_type]["name"]}（{time_diff:.0f}秒前受信）: {target_str}')
+                        break  # 最新のパスコードを取得したらループを抜ける
+
+                if not target_str:
+                    print(f'❌ 5分以内のメールから{EMAIL_TYPE_DICT[email_type]["name"]}が見つかりませんでした。')
+
+        return target_str
 
     except FileNotFoundError as e:
         print(f"❌ ファイルエラー: {e}")

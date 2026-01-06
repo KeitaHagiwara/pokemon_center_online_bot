@@ -175,7 +175,7 @@ if __name__ == '__main__':
     # スプレッドシートの全データをDataFrame形式で取得
     all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
 
-    user_info_list = ss.extract_user_info(all_data, START_ROW, END_ROW)
+    user_info_list = ss.extract_apply_lottery_user_info(all_data, START_ROW, END_ROW)
     print(json.dumps(user_info_list, indent=2, ensure_ascii=False))
     print("---------------")
     print(f"合計ユーザー数: {len(user_info_list)}")

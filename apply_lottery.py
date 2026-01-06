@@ -16,7 +16,7 @@ MAX_RETRY_PASSCODE = 10
 
 
 def main(driver, appium_utils, user_info, top_p=1, write_col='AA'):
-    """メイン処理"""
+    """抽選応募処理"""
 
     row_number = user_info["row_number"]
     email = user_info["email"]
@@ -242,7 +242,7 @@ if __name__ == '__main__':
     ss = SpreadsheetApiClient()
     # スプレッドシートの全データをDataFrame形式で取得
     all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
-    user_info_list = ss.extract_user_info(all_data, START_ROW, END_ROW, WRITE_COL)
+    user_info_list = ss.extract_apply_lottery_user_info(all_data, START_ROW, END_ROW, WRITE_COL)
     print(json.dumps(user_info_list, indent=2, ensure_ascii=False))
     print("---------------")
     print(f"合計ユーザー数: {len(user_info_list)}")

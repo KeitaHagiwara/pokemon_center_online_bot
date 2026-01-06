@@ -105,9 +105,9 @@ class SpreadsheetApiClient:
 
         return column_dict
 
-    def extract_user_info(self, all_data, start_row=4, end_row=5, write_col=None):
+    def extract_apply_lottery_user_info(self, all_data, start_row=4, end_row=5, write_col=None):
         """
-        スプレッドシートの全データからユーザー情報を抽出する
+        スプレッドシートの全データから抽選に応募するユーザー情報を抽出する
 
         Args:
             all_data (list): スプレッドシートの全データ
@@ -143,6 +143,63 @@ class SpreadsheetApiClient:
             }
             user_info_list.append(user_info)
         return user_info_list
+
+    def extract_registration_user_info(self, all_data, start_row=4, end_row=5):
+        """
+        スプレッドシートの全データから新規ユーザーとして登録するユーザー情報を抽出する
+
+        Args:
+            all_data (list): スプレッドシートの全データ
+            start_row (int): 抽出を開始する行番号（1始まり）
+            end_row (int or None): 抽出を終了する行番号（1始まり）、Noneの場合は最後の行まで
+
+        Returns:
+            list: ユーザー情報のリスト
+        """
+
+        registration_user_info_list = []
+
+        required_columns = ['メールアドレス', 'パスワード', '姓', '名', 'セイ', 'メイ', '誕生日', '郵便番号', '番地', '建物名・部屋番号', '電話番号']
+
+        column_dict = self.get_column_dict(all_data)
+        for col in required_columns:
+            if col not in column_dict:
+                print(f"エラー: '{col}' 列が見つかりません。")
+                return registration_user_info_list
+
+
+        for row_number, row in enumerate(all_data[start_row - 1:end_row]):
+            # 書き込み対象の列が指定されている場合、既に値が入っている行はスキップ
+            if row[column_dict.get('アカウント作成') - 1].strip() != "":
+                print(f"スキップ: 行 {row_number + start_row} は既にアカウント作成済みのため、スキップします。")
+                continue
+            else:
+                # 必須情報が不足している場合はスキップ
+                is_skip = False
+                for col in required_columns:
+                    if not row[column_dict.get(col) - 1].strip():
+                        print(f"スキップ: 行 {row_number + start_row} は必須情報 '{col}' が不足しているため、スキップします。")
+                        is_skip = True
+                        break
+                if is_skip:
+                    continue
+
+            user_info = {
+                'row_number': row_number + start_row,
+                'email': row[column_dict.get('メールアドレス') - 1],
+                'password': row[column_dict.get('パスワード') - 1],
+                'name': row[column_dict.get('姓') - 1] + " " + row[column_dict.get('名') - 1],
+                'name_kana': row[column_dict.get('セイ') - 1] + " " + row[column_dict.get('メイ') - 1],
+                'birth_year': row[column_dict.get('誕生日') - 1].split('/')[0],
+                'birth_month': row[column_dict.get('誕生日') - 1].split('/')[1],
+                'birth_day': row[column_dict.get('誕生日') - 1].split('/')[2],
+                'postcode': row[column_dict.get('郵便番号') - 1],
+                'street_address': row[column_dict.get('番地') - 1],
+                'building': row[column_dict.get('建物名・部屋番号') - 1],
+                'tel': row[column_dict.get('電話番号') - 1],
+            }
+            registration_user_info_list.append(user_info)
+        return registration_user_info_list
 
     def get_check_target_product_name_dict(self, all_data, column_alphabet, top_p):
         """

@@ -1,194 +1,197 @@
 import time, random, json
 
 from appium.webdriver.common.appiumby import AppiumBy
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 # 自作モジュール
 from scraping.ios.appium_utilities import AppiumUtilities
 from utils.spreadsheet import SpreadsheetApiClient
-from utils.gmail import get_latest_passcode
-from utils.common import pad_with_zeros
+from utils.gmail import extract_target_str_from_gmail_text_in_5min
+from utils.common import get_column_number_by_alphabet
 from config import SPREADSHEET_ID, SHEET_NAME
 
-MAX_RETRY_LOGIN = 3
-MAX_RETRY_PASSCODE = 10
+MAX_RETRY_AUTH_LINK = 10
+WRITE_COL = 'B'  # アカウント作成結果を書き込む列
 
+def input_form(driver, selector_obj, selector_value, input_value, is_selectbox=False):
+    try:
+        element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((selector_obj, selector_value))
+        )
+        # 要素を画面内にスクロール
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+        time.sleep(1)
 
-def main(appium_utils, email, password, top_p=1):
-    """メイン処理"""
+        if is_selectbox:
+            select = Select(element)
+            select.select_by_value(input_value)
+        else:
+            element.clear()
+            element.send_keys(input_value)
+        time.sleep(2)
+    except (NoSuchElementException, TimeoutException) as e:
+        print(f"要素が見つかりません: {selector_obj} - {e}")
 
-    driver = appium_utils.driver
+def main(driver, appium_utils, user_info):
+    """新規ユーザー作成処理"""
 
-    print(f"email: {email}")
-    print(f"password: {password}")
+    # IPアドレスの確認
+    # driver.get("https://www.cman.jp/network/support/go_access.cgi")
+    # time.sleep(5)
 
     try:
 
-        for retry_i in range(MAX_RETRY_LOGIN):
-
-            try:
-                # ログイン画面に遷移
-                driver.get("https://www.pokemoncenter-online.com/login/")
-                WebDriverWait(driver, 10).until(EC.presence_of_element_located((AppiumBy.TAG_NAME, "body")))
-                print("ログインページに移動しました")
-
-                time.sleep(random.uniform(3, 5))
-
-                print("IDを入力中...")
-                email_form = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((AppiumBy.ID, 'login-form-email'))
-                )
-                email_form.send_keys(email)
-
-                time.sleep(random.uniform(3, 5))
-
-                print("パスワードを入力中...")
-                password_form = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((AppiumBy.ID, 'current-password'))
-                )
-                password_form.send_keys(password)
-
-                time.sleep(random.uniform(3, 5))
-
-                print("ログインボタンをクリック中...")
-                login_button = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((AppiumBy.XPATH, "//*[@id='form1Button']"))
-                )
-                login_button.click()
-
-                time.sleep(15)
-                if ("ログイン" in driver.page_source and "/login/" in driver.current_url):
-                    raise Exception("ログインに失敗しました")
-
-                # 2段階認証処理
-                for retry_j in range(MAX_RETRY_PASSCODE):
-                    auth_code = get_latest_passcode(to_email=email)
-                    if auth_code:
-                        break
-                    time.sleep(15)
-
-                print("パスコードを入力中...")
-                passcode_form = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((AppiumBy.ID, 'authCode'))
-                )
-                passcode_form.send_keys(auth_code)
-
-                time.sleep(random.uniform(3, 5))
-
-                print("認証ボタンをクリック中...")
-                auth_button = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((AppiumBy.ID, 'authBtn'))
-                )
-                auth_button.click()
-
-                time.sleep(10)
-                if ("パスコード入力" in driver.page_source and "/login-mfa/" in driver.current_url):
-                    raise Exception("2段階認証に失敗しました")
-
-                # ここまで終わったらリトライループを抜ける
-                break
-
-            except Exception as e:
-                print(f"ログイン失敗、再試行します... {e}")
-                appium_utils.delete_browser_page()
-                time.sleep(10)
-                continue
-
-        driver.get("https://www.pokemoncenter-online.com/lottery/apply.html")
+        print("新規会員登録ページに移動中...")
+        driver.get("https://www.pokemoncenter-online.com/login/")
         time.sleep(random.uniform(5, 10))
 
-        for index in range(top_p):
-            print(f"抽選申し込み処理を開始します (index={index})")
+        # メールアドレスを入力して仮登録を実施する
+        email = user_info["email"]
+        print(f"メールアドレスを入力中...")
+        email_form = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((AppiumBy.ID, 'login-form-regist-email'))
+        )
+        email_form.send_keys(email)
+        time.sleep(random.uniform(3, 5))
 
-            try:
-                # 受付中の抽選かをチェックする
-                lottery_labels = lottery_fields = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'ttl', attempt=index)
-                lottery_label = lottery_labels[index]
-                print(lottery_label.get_attribute("innerText"))
-                if lottery_label.get_attribute("innerText") != "受付中":
-                    print(f"❌ {index+1}個目の商品は受付中の抽選ではありません")
-                    continue
+        print("新規会員登録ボタンをクリック中...")
+        user_register_button = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((AppiumBy.ID, 'form2Button'))
+        )
+        user_register_button.click()
+        time.sleep(random.uniform(3, 5))
 
-                # 1. lottery_fieldsを安全に取得
-                print(f"\n=== lottery_field[{index}]の取得を開始 ===")
-                lottery_fields = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'subDl')
-                if not lottery_fields or len(lottery_fields) <= index:
-                    print(f"lottery_field[{index}]が見つかりませんでした")
-                    # 代替セレクタも試す
-                    print("代替セレクタで再試行...")
-                    lottery_fields = appium_utils.safe_find_elements(AppiumBy.TAG_NAME, 'dl', attempt=index) or appium_utils.safe_find_elements(AppiumBy.XPATH, "//*[contains(@class, 'accordion') or contains(@class, 'toggle') or contains(@class, 'collaps')]", attempt=index)
-                    if not lottery_fields or len(lottery_fields) <= index:
-                        continue
+        # 仮登録メールを送信するボタンを押下する
+        tmp_register_button = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((AppiumBy.ID, 'send-confirmation-email'))
+        )
+        tmp_register_button.click()
+        time.sleep(random.uniform(3, 5))
+        print("✅ 仮登録が完了しました。メールを確認してください。")
 
-                print(f"見つかった要素数: {len(lottery_fields)}")
-                lottery_field = lottery_fields[index]
+        # 認証リンク付きメールを取得してクリックする
+        for retry_i in range(MAX_RETRY_AUTH_LINK):
+            search_keyword ="[ポケモンセンターオンライン]会員登録の手続きへ進む"
+            auth_link = extract_target_str_from_gmail_text_in_5min(to_email=email, subject_keyword=search_keyword, email_type="auth_link")
+            if auth_link:
+                break
+            time.sleep(15)
 
-                # アコーディオン「詳しく見る」を開く
-                print(f"\n=== アコーディオン「詳しく見る」を開く ===")
-                if not appium_utils.open_accordion(lottery_field, f"lottery_field[{index}]"):
-                    print(f"❌ アコーディオンを開けませんでした。次の抽選へ")
-                    continue
+        # auth_link = "https://www.pokemoncenter-online.com/new-customer/?token=Jv8ySXf%2FGsaBOv8fEs7WdkO%2FVbWSVZBvq8aQgmTg9Ck%3D"
+        # auth_linkのページへ遷移する
+        print("認証リンクのページに移動中...")
+        driver.get(auth_link)
 
-                print("✅ アコーディオンを開きました")
-                time.sleep(random.uniform(1, 3))  # アニメーション完了まで待機
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((AppiumBy.TAG_NAME, "body")))
+        print("ページの読み込み完了")
 
-                # 2. radioボタンを安全に取得してクリック
-                print("radioボタンを取得中...")
-                item_checkboxes = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'radio', attempt=index)
-                if not appium_utils.safe_click(item_checkboxes, 0, "radioボタン"):
-                    raise ValueError("商品選択のラジオボタンのクリックに失敗しました")
+        # お名前を入力
+        print("~~~~~~~~~~ Name Input ~~~~~~~~")
+        input_form(driver, AppiumBy.ID, "registration-form-fname", user_info["name"])
+        # お名前(カナ)を入力
+        print("~~~~~~~~~~ Name Kana Input ~~~~~~~~")
+        input_form(driver, AppiumBy.ID, "registration-form-kana", user_info["name_kana"])
+        # 生年月日(年)を入力
+        print("~~~~~~~~~~ Birth Year Input ~~~~~~~~")
+        input_form(driver, AppiumBy.ID, "registration-form-birthdayyear", user_info["birth_year"], is_selectbox=True)
+        # 生年月日(月)を入力
+        print("~~~~~~~~~~ Birth Month Input ~~~~~~~~")
+        input_form(driver, AppiumBy.ID, "registration-form-birthdaymonth", user_info["birth_month"], is_selectbox=True)
+        # 生年月日(日)を入力
+        print("~~~~~~~~~~ Birth Day Input ~~~~~~~~")
+        input_form(driver, AppiumBy.ID, "registration-form-birthdayday", user_info["birth_day"], is_selectbox=True)
+        # 郵便番号を入力
+        print("~~~~~~~~~~ Postcode Input ~~~~~~~~")
+        input_form(driver, AppiumBy.ID, "registration-form-postcode", user_info["postcode"])
+        # 住所(市区町村・番地)を入力
+        print("~~~~~~~~~~ Street Address Input ~~~~~~~~")
+        input_form(driver, AppiumBy.ID, "registration-form-address-line1", user_info["street_address"])
+        # 住所(建物名・部屋番号)を入力
+        print("~~~~~~~~~~ Building Input ~~~~~~~~")
+        input_form(driver, AppiumBy.ID, "registration-form-address-line2", user_info["building"])
+        # 電話番号を入力
+        print("~~~~~~~~~~ Telephone Input ~~~~~~~~")
+        input_form(driver, AppiumBy.NAME, "dwfrm_profile_customer_phone", user_info["tel"])
+        # パスワードを入力
+        print("~~~~~~~~~~ Password Input ~~~~~~~~")
+        input_form(driver, AppiumBy.NAME, "dwfrm_profile_login_password", user_info["password"])
+        # パスワード(確認)を入力
+        print("~~~~~~~~~~ Confirm Password Input ~~~~~~~~")
+        input_form(driver, AppiumBy.NAME, "dwfrm_profile_login_passwordconfirm", user_info["password"])
 
-                time.sleep(random.uniform(1, 3))
+        # メールマガジン「受け取らない」を選択
+        email_magazine_no_radio = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((AppiumBy.CSS_SELECTOR, "input[type='radio'][name='dwfrm_profile_customer_addtoemaillist'][value='false']"))
+        )
+        # 要素を画面内にスクロール
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", email_magazine_no_radio)
+        time.sleep(1)
+        # JavaScriptでクリック
+        driver.execute_script("arguments[0].click();", email_magazine_no_radio)
+        time.sleep(2)
 
-                # 3. 同意チェックボックスを安全に取得してクリック
-                print("同意チェックボックスを取得中...")
-                for i in range(3, 10):
-                    tag_id = f"L{pad_with_zeros(f'{i}{index+1}')}"
-                    try:
-                        agree_checkbox = WebDriverWait(driver, 2).until(
-                            EC.presence_of_element_located((AppiumBy.ID, tag_id))
-                        )
-                        if agree_checkbox.is_displayed():
-                            print(f"同意チェックボックスを発見: ID={tag_id}")
-                            break
-                    except:
-                        print(f"同意チェックボックスを発見できませんでした: ID={tag_id}")
-                        continue
-                agree_checkbox.click()
-                time.sleep(random.uniform(1, 3))
+        # 利用規約に同意にチェック
+        print("~~~~~~~~~~ Terms Checkbox Click ~~~~~~~~")
+        terms_checkbox = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((AppiumBy.ID, "terms"))
+        )
+        terms_checkbox.send_keys(Keys.SPACE)
+        time.sleep(2)
 
-                # 4. モーダル開くボタンを安全にクリック
-                print("モーダル開くボタンをクリック中...")
-                apply_buttons = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'popup-modal', attempt=index)
-                if apply_buttons[0].get_attribute("innerText") == "キャンセルする":
-                    raise ValueError("既に応募済みの可能性があります")
+        # プライバシーポリシーに同意にチェック
+        print("~~~~~~~~~~ Privacy Policy Checkbox Click ~~~~~~~~")
+        policy_checkbox = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((AppiumBy.ID, "privacyPolicy"))
+        )
+        policy_checkbox.send_keys(Keys.SPACE)
+        time.sleep(2)
 
-                if not appium_utils.safe_click(apply_buttons, 0, "応募するボタン"):
-                    raise ValueError("応募するボタンのクリックに失敗しました")
+        # 確認ボタンをクリック
+        # FIXME: なぜかクリック完了しているのにエラーになることがあるため、try文で囲む
+        print("~~~~~~~~~~ Confirm Button Click ~~~~~~~~")
+        try:
+            confirm_button = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((AppiumBy.ID, 'registration_button'))
+            )
+            confirm_button.send_keys(Keys.ENTER)
+        except:
+            pass
+        time.sleep(5)
 
-                time.sleep(random.uniform(1, 3))
+        # 登録ボタンをクリック
+        print("~~~~~~~~~~Submit Button Click ~~~~~~~~")
+        try:
+            submit_button = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((AppiumBy.CLASS_NAME, 'submitButton'))
+            )
+            submit_button.send_keys(Keys.ENTER)
+        except:
+            pass
+        time.sleep(5)
 
-                # 5. 申し込みボタンを安全にクリック
-                print("申し込みボタンをクリック中...")
-                if appium_utils.wait_and_click_element(AppiumBy.ID, 'applyBtn'):
-                    print("✅ 申し込みボタンをクリックしました")
-                else:
-                    print("❌ 申し込みボタンのクリックに失敗しました")
-                    continue
+        # 完了したかどうかをチェックする
+        # FIXME: なぜかクリック完了しているのにエラーになることがあるため、try文で囲む
+        if "会員登録が完了しました" in driver.page_source:
+            print("✅ 会員登録が完了しました。")
+        else:
+            raise Exception("会員登録に失敗した可能性があります。ご確認ください。")
 
-                time.sleep(random.uniform(10, 15))
-                print(f"🎉 抽選申し込み {index + 1} 完了!")
-
-            except ValueError as ve:
-                print(f"❌ {ve}")
-
-            except Exception as e:
-                print(f"❌ 抽選申し込み {index + 1} でエラーが発生: {e}")
+        # スプレッドシートに結果を書き込む
+        ss = SpreadsheetApiClient()
+        write_col_number = get_column_number_by_alphabet(WRITE_COL)
+        ss.write_to_cell(
+            spreadsheet_id=SPREADSHEET_ID,
+            sheet_name=SHEET_NAME,
+            row=user_info["row_number"],
+            column=write_col_number,
+            value="済み"
+        )
 
     except Exception as e:
         print(f"エラーが発生しました: {e}")
-        # driver.save_screenshot('error_screenshot.png')
 
     finally:
         # # ポケセンオンラインからログアウトする
@@ -210,19 +213,18 @@ def main(appium_utils, email, password, top_p=1):
         print("完了しました")
 
 if __name__ == '__main__':
-    TOP_P = 2 # 抽選申し込みを行う上位件件数
 
-    START_ROW = 13
-    END_ROW = 13
+    START_ROW = 82
+    END_ROW = 87
 
     # スプレッドシートからユーザー情報を取得する
     ss = SpreadsheetApiClient()
     # スプレッドシートの全データをDataFrame形式で取得
     all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
-    user_info_list = ss.extract_user_info(all_data, START_ROW, END_ROW)
-    print(json.dumps(user_info_list, indent=2, ensure_ascii=False))
+    registration_user_info_list = ss.extract_registration_user_info(all_data, START_ROW, END_ROW)
+    print(json.dumps(registration_user_info_list, indent=2, ensure_ascii=False))
     print("---------------")
-    print(f"合計ユーザー数: {len(user_info_list)}")
+    print(f"作成するユーザー数: {len(registration_user_info_list)}")
     print("---------------")
 
     print("Appiumドライバーを初期化中...")
@@ -230,8 +232,8 @@ if __name__ == '__main__':
 
     print("Safariを起動しました")
 
-    for user_info in user_info_list:
-        email = user_info["email"]
-        password = user_info["password"]
+    driver = appium_utils.driver
 
-        main(appium_utils, email, password, TOP_P)
+    # ユーザー登録実行処理
+    for user_info in registration_user_info_list:
+        main(driver, appium_utils, user_info)
