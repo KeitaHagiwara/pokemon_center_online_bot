@@ -201,6 +201,53 @@ class SpreadsheetApiClient:
             registration_user_info_list.append(user_info)
         return registration_user_info_list
 
+
+    def extract_payment_user_info(self, all_data, start_row=4, end_row=5, target_column="AA", top_p=1):
+        """
+        スプレッドシートの全データから決済を実行するユーザー情報を抽出する
+
+        Args:
+            all_data (list): スプレッドシートの全データ
+            start_row (int): 抽出を開始する行番号（1始まり）
+            end_row (int or None): 抽出を終了する行番号（1始まり）、Noneの場合は最後の行まで
+
+        Returns:
+            list: ユーザー情報のリスト
+        """
+
+        payment_user_info_list = []
+
+        required_columns = ['メールアドレス', 'パスワード', 'Sei', 'Mei', '名義', 'クレカ番号', '有効期限', 'CVV']
+
+        column_dict = self.get_column_dict(all_data)
+        for col in required_columns:
+            if col not in column_dict:
+                print(f"エラー: '{col}' 列が見つかりません。")
+                return payment_user_info_list
+
+        for row_number, row in enumerate(all_data[start_row - 1:end_row]):
+            has_winning = False
+            for col in range(top_p):
+                target_col_index = get_column_number_by_alphabet(target_column) + col
+                if row[target_col_index - 1].strip() == "当選":
+                    has_winning = True
+
+            if not has_winning:
+                print(f"スキップ: 行 {row_number + start_row} は当選商品がないため、スキップします。")
+                continue
+
+            user_info = {
+                'row_number': row_number + start_row,
+                'email': row[column_dict.get('メールアドレス') - 1],
+                'password': row[column_dict.get('パスワード') - 1],
+                'meigi': row[column_dict.get('Mei') - 1] + " " + row[column_dict.get('Sei') - 1],
+                'credit_card_no': row[column_dict.get('クレカ番号') - 1],
+                'day_of_expiry': row[column_dict.get('有効期限') - 1],
+                'security_code': row[column_dict.get('CVV') - 1],
+            }
+            payment_user_info_list.append(user_info)
+        return payment_user_info_list
+
     def get_check_target_product_name_dict(self, all_data, column_alphabet, top_p):
         """
         指定した行から確認対象の商品名を取得する

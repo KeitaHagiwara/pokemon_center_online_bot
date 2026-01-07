@@ -7,7 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 # 自作モジュール
 from scraping.ios.appium_utilities import AppiumUtilities
 from utils.spreadsheet import SpreadsheetApiClient
-from utils.gmail import get_latest_passcode
+from utils.gmail import extract_target_str_from_gmail_text_in_5min
 from utils.common import get_column_number_by_alphabet
 from config import SPREADSHEET_ID, SHEET_NAME
 
@@ -71,7 +71,11 @@ def main(driver, appium_utils, user_info, top_p=1, write_col='AA'):
 
                 # 2段階認証処理
                 for retry_j in range(MAX_RETRY_PASSCODE):
-                    auth_code = get_latest_passcode(to_email=email)
+                    auth_code = extract_target_str_from_gmail_text_in_5min(
+                        to_email=email,
+                        subject_keyword="[ポケモンセンターオンライン]ログイン用パスコードのお知らせ",
+                        email_type="passcode"
+                    )
                     if auth_code:
                         break
                     time.sleep(15)
