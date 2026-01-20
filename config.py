@@ -1,8 +1,10 @@
 import os
 from dotenv import load_dotenv
+from utils.common import get_base_path
 
-# .envファイルを読み込み
-load_dotenv()
+# .envファイルを読み込み（パスを明示的に指定）
+env_path = os.path.join(get_base_path(), '.env')
+load_dotenv(env_path)
 
 # 環境変数から設定を取得
 CREDENTIALS_FILE_NAME = os.getenv("CREDENTIALS_FILE_NAME")

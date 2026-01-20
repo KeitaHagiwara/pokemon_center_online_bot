@@ -3,12 +3,12 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 
-from utils.common import get_column_number_by_alphabet
+from utils.common import get_column_number_by_alphabet, get_base_path
 from config import SPREADSHEET_ID, SHEET_NAME, CREDENTIALS_FILE_NAME
 
 HEADER_ROWS = 3  # ヘッダー行数
 
-credentials_file_path = os.path.join(os.getcwd(), 'credentials', 'service_account', CREDENTIALS_FILE_NAME)
+credentials_file_path = os.path.join(get_base_path(), 'credentials', 'service_account', CREDENTIALS_FILE_NAME)
 
 
 class SpreadsheetApiClient:

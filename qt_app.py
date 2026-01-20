@@ -1,15 +1,19 @@
 import sys
 import subprocess
+import select
 import os
+import time
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QLineEdit, QTextEdit, QSpinBox,
-    QTabWidget, QGroupBox
+    QTabWidget, QGroupBox, QMessageBox
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
+# from test_function import test
+# from initialize_gmail import initialize_gmail_oauth
 from test_function import test
-from initialize_gmail import initialize_gmail_oauth
+from utils.common import get_base_path
 
 START_ROW_DEFAULT = 4
 MAX_ROW = 10000
@@ -41,22 +45,78 @@ class ScriptWorker(QThread):
             )
 
             # Appiumサーバーの起動を少し待つ
-            import time
             time.sleep(3)
             self.progress.emit("Appiumサーバーを起動しました")
 
             # xcode_build.sh をバックグラウンドで実行
             print("[DEBUG] xcode_build.sh 実行開始")
-            self.progress.emit("xcode_build.sh を実行中...")
+            self.progress.emit("iPhoneにプログラム実行環境を構築中...")
             xcode_script = os.path.join(self.current_dir, "scripts", "xcode_build.sh")
             print(f"[DEBUG] xcode_script: {xcode_script}")
-            # Popenを使ってバックグラウンドで実行（終了を待たない）
-            subprocess.Popen(
+
+            # Popenで標準出力を監視しながら実行
+            process = subprocess.Popen(
                 ["sh", xcode_script],
                 cwd=self.current_dir,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
             )
+
+            # 「Testing started」メッセージを待つ（タイムアウト: 3分）
+            success_message_found = False
+            timeout = 180  # 3分（秒）
+            start_time = time.time()
+
+            print("[DEBUG] 'Testing started' メッセージを監視中...")
+
+            try:
+                while True:
+                    # タイムアウトチェック
+                    elapsed_time = time.time() - start_time
+                    if elapsed_time > timeout:
+                        print("[DEBUG] タイムアウト: 3分経過しても 'Testing started' が見つかりませんでした")
+                        process.terminate()
+                        self.finished.emit(False, "タイムアウト: xcode_build.sh の実行が3分以内に完了しませんでした")
+                        return
+
+                    # 非ブロッキングで標準出力をチェック（最大0.5秒待機）
+                    remaining_time = timeout - elapsed_time
+                    wait_time = min(0.5, remaining_time)
+
+                    # selectを使って非ブロッキングで読み取り可能かチェック
+                    ready, _, _ = select.select([process.stdout], [], [], wait_time)
+
+                    if ready:
+                        line = process.stdout.readline()
+                        if line:
+                            print(f"[DEBUG] xcode output: {line.strip()}")
+
+                            # 「Testing started」が見つかったか確認
+                            if "Testing started" in line:
+                                print("[DEBUG] 'Testing started' メッセージを検出しました！")
+                                success_message_found = True
+                                break
+
+                    # プロセスが終了していたらチェック
+                    if process.poll() is not None:
+                        # プロセスは終了したが、メッセージが見つからなかった
+                        if not success_message_found:
+                            print("[DEBUG] プロセスが終了しましたが 'Testing started' が見つかりませんでした")
+                            self.finished.emit(False, "xcode_build.sh が 'Testing started' を出力せずに終了しました")
+                            return
+                        break
+
+                if success_message_found:
+                    print("[DEBUG] xcode_build.sh が正常に開始されました")
+                    self.progress.emit("iPhoneとの接続が確立されました")
+
+            except Exception as e:
+                print(f"[DEBUG] xcode_build.sh 監視中にエラー: {e}")
+                process.terminate()
+                self.finished.emit(False, f"iPhoneとの接続環境構築中にエラーが発生しました: {str(e)}")
+                return
 
             print("[DEBUG] iPhone接続処理成功 - finished.emit(True) を呼び出します")
             self.finished.emit(True, "iPhone接続処理が完了しました")
@@ -95,7 +155,7 @@ class MainWindow(QMainWindow):
         status_layout.addStretch()
         self.iphone_status_label = QLabel()
         self.iphone_status_label.setStyleSheet("font-size: 14px; padding: 2px;")
-        self.update_iphone_status(False)  # 初期状態は未接続
+        self.update_iphone_status(0)  # 初期状態は未接続
         status_layout.addWidget(self.iphone_status_label)
         main_layout.addLayout(status_layout)
 
@@ -153,7 +213,7 @@ class MainWindow(QMainWindow):
         """アプリケーション終了時の処理"""
         try:
             # terminate.shを実行してappiumを停止
-            current_dir = os.path.dirname(os.path.abspath(__file__))
+            current_dir = get_base_path()
             terminate_script = os.path.join(current_dir, "scripts", "terminate.sh")
             subprocess.run(
                 ["sh", terminate_script],
@@ -168,13 +228,16 @@ class MainWindow(QMainWindow):
             # イベントを受け入れてアプリケーションを終了
             event.accept()
 
-    def update_iphone_status(self, connected):
+    def update_iphone_status(self, connected_no):
         """iPhone接続ステータスを更新"""
-        print(f"[DEBUG] update_iphone_status called: connected={connected}")
-        if connected:
-            self.iphone_status_label.setText('<span style="color: #27ae60; font-size: 18px;">●</span> <span>iPhone接続完了</span>')
-        else:
+        print(f"[DEBUG] update_iphone_status called: connected={connected_no}")
+        if connected_no == 0:
             self.iphone_status_label.setText('<span style="color: #e74c3c; font-size: 18px;">●</span> <span>iPhone未接続</span>')
+        elif connected_no == 1:
+            self.iphone_status_label.setText('<span style="color: #f39c12; font-size: 18px;">●</span> <span>iPhone接続確認中</span>')
+        else:
+            self.iphone_status_label.setText('<span style="color: #27ae60; font-size: 18px;">●</span> <span>iPhone接続完了</span>')
+
 
     def create_lottery_tab(self):
         """1. 抽選実行タブ"""
@@ -613,10 +676,10 @@ class MainWindow(QMainWindow):
         print("[DEBUG] on_iphone_connect() 呼び出し")
         # ボタンを無効化
         self.iphone_connect_button.setEnabled(False)
-        self.statusBar().showMessage("iPhone接続処理を開始します...", MSG_SHOW_TIME)
+        self.statusBar().showMessage("iPhoneにプログラム実行環境を構築を構築します...")
 
         # 現在のディレクトリを取得
-        current_dir = os.path.dirname(os.path.abspath(__file__))
+        current_dir = get_base_path()
         print(f"[DEBUG] current_dir: {current_dir}")
 
         # ワーカースレッドを作成して実行
@@ -629,6 +692,7 @@ class MainWindow(QMainWindow):
     def on_script_progress(self, message):
         """スクリプト実行の進捗を表示"""
         self.statusBar().showMessage(message, MSG_SHOW_TIME)
+        self.update_iphone_status(1)  # 接続確認中
 
     def on_script_finished(self, success, message):
         """スクリプト実行完了時の処理"""
@@ -639,21 +703,23 @@ class MainWindow(QMainWindow):
 
         if success:
             print("[DEBUG] 接続成功 - ステータスを更新します")
-            self.statusBar().showMessage(message, MSG_SHOW_TIME)
+            self.statusBar().showMessage("iPhoneとの接続を確立しました")
             # 接続成功時にステータスを更新
-            self.update_iphone_status(True)
+            self.update_iphone_status(2)
         else:
             print("[DEBUG] 接続失敗 - ステータスは未接続のまま")
             self.statusBar().showMessage("エラー: iPhone接続処理に失敗", MSG_SHOW_TIME)
             print(message)
+            # エラーポップアップを表示
+            QMessageBox.critical(self, "エラー", "iPhone接続処理に失敗しました。\niPhoneがケーブルで接続されているか、セットアップが完了していることを確認してください。")
             # 接続失敗時は未接続のまま
-            self.update_iphone_status(False)
+            self.update_iphone_status(0)
 
     def on_gmail_login(self):
         """Gmailログイン処理"""
         self.settings_log.append("Gmailログイン処理を開始します...\n")
         self.statusBar().showMessage("Gmailログイン処理中...", MSG_SHOW_TIME)
-        initialize_gmail_oauth(self.settings_log)
+        # initialize_gmail_oauth(self.settings_log)
         self.statusBar().showMessage("Gmailログイン処理完了", MSG_SHOW_TIME)
 
     def on_lottery_start(self):

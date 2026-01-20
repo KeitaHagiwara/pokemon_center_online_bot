@@ -25,7 +25,7 @@ from google.auth.exceptions import GoogleAuthError
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from utils.common import base64_decode
+from utils.common import base64_decode, get_base_path
 from email.utils import parsedate_to_datetime
 from config import OAUTH_FILE_NAME, OAUTH_TOKEN_FILE_NAME
 # from common import base64_decode
@@ -49,7 +49,7 @@ EMAIL_TYPE_DICT = {
     'auth_link': {'name': '認証リンク', 'icon': '🔗'}
 }
 
-credentials_dir_path = os.path.join(os.getcwd(), 'credentials', 'oauth')
+credentials_dir_path = os.path.join(get_base_path(), 'credentials', 'oauth')
 # credentials_file_name = 'oauth_credentials.json'
 # credentials_file_name = 'ポケセン鍵_テスト.json'
 # credentials_file_name = 'oauth_ohtani.json'

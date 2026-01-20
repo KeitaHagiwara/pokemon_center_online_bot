@@ -1,4 +1,22 @@
 import base64
+import sys
+import os
+
+def get_base_path():
+    """
+    アプリケーションのベースパスを取得（PyInstaller対応）
+
+    Returns:
+        str: アプリケーションのベースディレクトリパス
+            - PyInstallerでバンドルされている場合: sys._MEIPASS（一時展開ディレクトリ）
+            - 通常のPython実行の場合: カレントディレクトリまたはスクリプトのディレクトリ
+    """
+    if getattr(sys, 'frozen', False):
+        # PyInstallerでバンドルされている場合
+        return sys._MEIPASS
+    else:
+        # 通常のPython実行の場合
+        return os.getcwd()
 
 def base64_decode(b64_message):
     """
