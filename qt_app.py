@@ -66,6 +66,7 @@ class ScriptWorker(QThread):
 
             # 「Testing started」メッセージを待つ（タイムアウト: 3分）
             success_message_found = False
+            error_message_found = False
             timeout = 180  # 3分（秒）
             start_time = time.time()
 
@@ -99,6 +100,12 @@ class ScriptWorker(QThread):
                                 success_message_found = True
                                 break
 
+                            # 「Cancel Testing」が見つかったか確認
+                            if "Cancel Testing" in line:
+                                print("[DEBUG] 'Cancel Testing' メッセージを検出しました！")
+                                error_message_found = True
+                                break
+
                     # プロセスが終了していたらチェック
                     if process.poll() is not None:
                         # プロセスは終了したが、メッセージが見つからなかった
@@ -111,6 +118,10 @@ class ScriptWorker(QThread):
                 if success_message_found:
                     print("[DEBUG] xcode_build.sh が正常に開始されました")
                     self.progress.emit("iPhoneとの接続が確立されました")
+
+                if error_message_found:
+                    print("[DEBUG] xcode_build.sh でエラーが発生しました")
+                    raise Exception("iPhoneが接続されていないか、セットアップが完了していません。")
 
             except Exception as e:
                 print(f"[DEBUG] xcode_build.sh 監視中にエラー: {e}")
