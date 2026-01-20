@@ -8,13 +8,12 @@ from selenium.webdriver.support import expected_conditions as EC
 # 自作モジュール
 from scraping.ios.appium_utilities import AppiumUtilities
 from utils.spreadsheet import SpreadsheetApiClient
-from utils.gmail import extract_target_str_from_gmail_text_in_5min
-from utils.common import get_column_number_by_alphabet
+from utils.login import login_pokemon_center_online
 from config import SPREADSHEET_ID, SHEET_NAME
 
-MAX_RETRY_LOGIN = 3
+DEBUG_MODE = False
+RETRY_LOOP = 3
 MAX_RETRY_PASSCODE = 10
-
 
 def main(driver, appium_utils, user_info, target_product_name_dict):
     """抽選応募処理"""
@@ -34,79 +33,10 @@ def main(driver, appium_utils, user_info, target_product_name_dict):
 
     try:
 
-        for retry_i in range(MAX_RETRY_LOGIN):
-
-            try:
-                # ログイン画面に遷移
-                driver.get("https://www.pokemoncenter-online.com/login/")
-                WebDriverWait(driver, 10).until(EC.presence_of_element_located((AppiumBy.TAG_NAME, "body")))
-                print("ログインページに移動しました")
-
-                time.sleep(random.uniform(3, 5))
-
-                print("IDを入力中...")
-                email_form = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((AppiumBy.ID, 'login-form-email'))
-                )
-                email_form.send_keys(email)
-
-                time.sleep(random.uniform(3, 5))
-
-                print("パスワードを入力中...")
-                password_form = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((AppiumBy.ID, 'current-password'))
-                )
-                password_form.send_keys(password)
-
-                time.sleep(random.uniform(3, 5))
-
-                print("ログインボタンをクリック中...")
-                login_button = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((AppiumBy.XPATH, "//*[@id='form1Button']"))
-                )
-                login_button.click()
-
-                time.sleep(15)
-                if ("ログイン" in driver.page_source and "/login/" in driver.current_url):
-                    raise Exception("ログインに失敗しました")
-
-                # 2段階認証処理
-                for retry_j in range(MAX_RETRY_PASSCODE):
-                    auth_code = extract_target_str_from_gmail_text_in_5min(
-                        to_email=email,
-                        subject_keyword="[ポケモンセンターオンライン]ログイン用パスコードのお知らせ",
-                        email_type="passcode"
-                    )
-                    if auth_code:
-                        break
-                    time.sleep(15)
-
-                print("パスコードを入力中...")
-                passcode_form = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((AppiumBy.ID, 'authCode'))
-                )
-                passcode_form.send_keys(auth_code)
-
-                time.sleep(random.uniform(3, 5))
-
-                print("認証ボタンをクリック中...")
-                auth_button = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((AppiumBy.ID, 'authBtn'))
-                )
-                auth_button.click()
-
-                time.sleep(10)
-                if ("パスコード入力" in driver.page_source and "/login-mfa/" in driver.current_url):
-                    raise Exception("2段階認証に失敗しました")
-
-                # ここまで終わったらリトライループを抜ける
-                break
-
-            except Exception as e:
-                print(f"ログイン失敗、再試行します... {e}")
-                appium_utils.delete_browser_page()
-                time.sleep(10)
-                continue
+        # ログイン処理
+        is_logged_in = login_pokemon_center_online(driver, email, password)
+        if not is_logged_in:
+            raise Exception("ログインに失敗しました")
 
         target_lottery_result = None
         for target_product_name, target_product_column in target_product_name_dict.items():
@@ -154,9 +84,9 @@ def main(driver, appium_utils, user_info, target_product_name_dict):
                                 )
 
                                 # 当選が複数ある場合は、indexに応じて決済ページに遷移する
-                                if payment_links and len(payment_links) >= 2:
+                                if payment_links:
+                                    payment_link = payment_links[0] if len(payment_links) == 1 else payment_links[index]
                                     # スクロールして表示
-                                    payment_link = payment_links[index]
                                     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", payment_link)
                                     time.sleep(1)
                                     # JavaScriptでクリック
@@ -212,34 +142,51 @@ def main(driver, appium_utils, user_info, target_product_name_dict):
                                 EC.presence_of_element_located((AppiumBy.CSS_SELECTOR, '.carTxt.stored-card-number'))
                             )
                             if registered_card_no_element.get_attribute('innerText').strip() == "":
+                                # クレジットカード情報を入力する必要があるのに、必要なユーザー情報がスプシに記載されていない場合はエラーとする
+                                required_fields = ["meigi", "credit_card_no", "day_of_expiry", "security_code"]
+                                for field in required_fields:
+                                    if not user_info.get(field):
+                                        raise ValueError(f"クレジットカード情報の入力が必要ですが、ユーザー情報に {field} が設定されていません: {user_info}")
+
                                 print("クレジットカード情報を入力中...")
+                                print(user_info)
+                                print(" - 名義")
                                 meigi_form = WebDriverWait(driver, 10).until(
                                     EC.presence_of_element_located((AppiumBy.ID, 'cardOwner'))
                                 )
+                                print(meigi_form)
                                 meigi_form.send_keys(user_info["meigi"])
                                 time.sleep(random.uniform(1, 2))
 
+                                print(" - クレジットカード番号")
                                 credit_card_no_form = WebDriverWait(driver, 10).until(
                                     EC.presence_of_element_located((AppiumBy.ID, 'cardNumber'))
                                 )
+                                print(credit_card_no_form)
                                 credit_card_no_form.send_keys(user_info["credit_card_no"])
                                 time.sleep(random.uniform(1, 2))
 
+                                print(" - 有効期限(月)")
                                 day_of_expiry_month_form = WebDriverWait(driver, 10).until(
                                     EC.presence_of_element_located((AppiumBy.ID, 'expirationMonth'))
                                 )
+                                print(day_of_expiry_month_form)
                                 day_of_expiry_month_form.send_keys(user_info["day_of_expiry"].split('/')[0])  # 月
                                 time.sleep(random.uniform(1, 2))
 
+                                print(" - 有効期限(年)")
                                 day_of_expiry_year_form = WebDriverWait(driver, 10).until(
                                     EC.presence_of_element_located((AppiumBy.ID, 'expirationYear'))
                                 )
+                                print(day_of_expiry_year_form)
                                 day_of_expiry_year_form.send_keys(user_info["day_of_expiry"].split('/')[1][2:])  # 年
                                 time.sleep(random.uniform(1, 2))
 
+                                print(" - セキュリティコード")
                                 security_code_form = WebDriverWait(driver, 10).until(
                                     EC.presence_of_element_located((AppiumBy.ID, 'securityCode'))
                                 )
+                                print(security_code_form)
                                 security_code_form.send_keys(user_info["security_code"])
                                 time.sleep(random.uniform(1, 2))
 
@@ -311,59 +258,56 @@ def main(driver, appium_utils, user_info, target_product_name_dict):
 
     except Exception as e:
         print(f"エラーが発生しました: {e}")
-        # driver.save_screenshot('error_screenshot.png')
 
     finally:
-        # # ポケセンオンラインからログアウトする
-        # print("マイページに移動中...")
-        # driver.get("https://www.pokemoncenter-online.com/mypage/")
-        # time.sleep(5)
-
-        # print("ログアウト中...")
-        # logout_buttons = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'logout')
-        # # if logout_buttons[0].get_attribute("innerText") == "ログアウト":
-        # if not appium_utils.safe_click(logout_buttons, 0, "ログアウト"):
-        #     print("❌ ログアウトボタンのクリックに失敗しました")
-        # time.sleep(10)
-
-        # ドライバーを終了
-        # pass
-        print("\nドライバーを終了中...")
-        appium_utils.delete_browser_page()
-        time.sleep(random.uniform(10, 15))
-        print("完了しました")
+        if not DEBUG_MODE:
+            # ドライバーを終了
+            print("\nドライバーを終了中...")
+            appium_utils.delete_browser_page()
+            time.sleep(5)
+            print("完了しました")
+        else:
+            pass
 
 if __name__ == '__main__':
-    WRITE_COL = 'X'  # 抽選申し込み結果を書き込む列
+    WRITE_COL = 'Z'  # 抽選申し込み結果を書き込む列
     TOP_P = 2 # 抽選申し込みを行う上位件件数
 
-    START_ROW = 47
-    END_ROW = 75
+    START_ROW = 4
+    END_ROW = 87
 
     # スプレッドシートからユーザー情報を取得する
     ss = SpreadsheetApiClient()
-    # スプレッドシートの全データをDataFrame形式で取得
-    all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
-    user_info_list = ss.extract_payment_user_info(all_data, START_ROW, END_ROW, WRITE_COL, TOP_P)
 
-    print(json.dumps(user_info_list, indent=2, ensure_ascii=False))
-    print("---------------")
-    print(f"合計ユーザー数: {len(user_info_list)}")
-    print("---------------")
+    for loop in range(3):
+        print(f"{loop}回目の処理を開始します")
 
-    # 抽選結果確認対象商品名の辞書を取得
-    target_product_name_dict = ss.get_check_target_product_name_dict(all_data, WRITE_COL, TOP_P)
+        # スプレッドシートの全データをDataFrame形式で取得
+        all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
+        user_info_list = ss.extract_payment_user_info(all_data, START_ROW, END_ROW, WRITE_COL, TOP_P)
 
-    print("Appiumドライバーを初期化中...")
-    appium_utils = AppiumUtilities()
+        print(json.dumps(user_info_list, indent=2, ensure_ascii=False))
+        print("---------------")
+        print(f"合計ユーザー数: {len(user_info_list)}")
+        print("---------------")
 
-    print("Safariを起動しました")
+        # 抽選結果確認対象商品名の辞書を取得
+        target_product_name_dict = ss.get_check_target_product_name_dict(all_data, WRITE_COL, TOP_P)
 
-    driver = appium_utils.driver
+        print("Appiumドライバーを初期化中...")
+        appium_utils = AppiumUtilities()
+
+        print("Safariを起動しました")
+
+        driver = appium_utils.driver
 
 
-    for user_info in user_info_list:
-        if not user_info.get("email") or not user_info.get("password"):
-            print(f"❌ emailまたはpasswordが未設定のためスキップします: {user_info}")
-            continue
-        main(driver, appium_utils, user_info, target_product_name_dict)
+        for user_info in user_info_list:
+            if not user_info.get("email") or not user_info.get("password"):
+                print(f"❌ emailまたはpasswordが未設定のためスキップします: {user_info}")
+                continue
+            main(driver, appium_utils, user_info, target_product_name_dict)
+
+        # 最低3分の待機時間を確保する
+        print("次のループまで3分間待機します...")
+        time.sleep(180)

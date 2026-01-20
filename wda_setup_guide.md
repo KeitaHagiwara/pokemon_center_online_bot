@@ -43,7 +43,7 @@ error: Signing for "WebDriverAgentRunner" requires a development team.
 
 **解決策:**
 
-- Xcode > Preferences > Accounts で Apple ID を追加
+- Xcode > Settings > Accounts で Apple ID を追加
 - 正しい Team ID を確認: `C685BDU5S2`
 
 #### B. Bundle Identifier エラー
@@ -124,6 +124,26 @@ iOS 18 以降では、Developer Mode を有効にする必要があります:
 3. オンに切り替え
 4. 再起動
 
+デベロッパモードが表示されない場合、以下の手順を実施してください。
+1. デバイスを接続
+2. 上部のデバイス選択で「オオタニリョウヘイのiPhone」を選択
+3. Product > Run（または ⌘R）を実行
+4. アラートが表示される: 「デベロッパーモードを有効にする必要があります」
+5. iPhoneでアラートが表示されたら「設定」をタップ
+6. 設定 > プライバシーとセキュリティ > デベロッパーモード が表示される
+
+それでもエラーになる場合は、以下を試してください:
+`cd ~/.appium/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent`
+
+# デバイスにインストールを試みる
+```
+xcodebuild test \
+  -project WebDriverAgent.xcodeproj \
+  -scheme WebDriverAgentRunner \
+  -destination "id=00008030-001818542233402E" \
+  -allowProvisioningUpdates
+```
+
 ### 7. ビルド成功後の確認
 
 ```bash
@@ -178,3 +198,13 @@ options.show_xcode_log = True  # 初回デバッグ用
 3. 該当するエラーの解決策を実行
 4. Xcode で設定を確認・修正
 5. `python sample.py` を再実行
+
+### Xcodeのセットアップが完了したら
+iPhoneで「設定」>「一般」>「VPNとデバイス管理」>「<デバイスアカウント>」の証明書を信頼してください。
+
+また、Safariでリモートオートメーション設定する必要があります。
+以下の設定を実施してください:
+設定 > Safari > 詳細 >
+ - Web Inspector → オン
+ - JavaScript → オン
+ - リモートオートメーション  → オン

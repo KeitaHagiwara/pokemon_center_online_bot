@@ -260,7 +260,7 @@ function generateRandomChars(length, seedValue) {
   if (length > 3) length = 3; // 最大3文字に制限
 
   // 各カテゴリの文字
-  const symbols = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
+  const symbols = '!"#$%&\'()*+,-./:;<>?@[\\]^_`{|}~';
   const digits = '0123456789';
   const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 

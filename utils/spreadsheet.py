@@ -105,14 +105,20 @@ class SpreadsheetApiClient:
 
         return column_dict
 
-    def extract_apply_lottery_user_info(self, all_data, start_row=4, end_row=5, write_col=None):
+    def extract_apply_lottery_user_info(self, all_data, start_row=4, end_row=5, write_col='AA', top_p=1, extract_type='apply_lottery'):
         """
-        スプレッドシートの全データから抽選に応募するユーザー情報を抽出する
+        スプレッドシートの全データからユーザー情報を抽出する
+        extract_typeにより抽出条件を変更する
+            - extract_type: 'apply_lottery' 抽選申し込みを行うユーザー情報を抽出
+            - extract_type: 'check_results' 抽選結果を確認するユーザー情報を抽出
 
         Args:
             all_data (list): スプレッドシートの全データ
             start_row (int): 抽出を開始する行番号（1始まり）
             end_row (int or None): 抽出を終了する行番号（1始まり）、Noneの場合は最後の行まで
+            write_col (str): 書き込み対象の列（A始まり）
+            top_p (int): 上位件数
+            extract_type (str): 抽出タイプ ('apply_lottery' または 'check_results')
 
         Returns:
             list: ユーザー情報のリスト
@@ -121,28 +127,47 @@ class SpreadsheetApiClient:
         user_info_list = []
 
         column_dict = self.get_column_dict(all_data)
-        email_col_index = column_dict.get('メールアドレス')
-        password_col_index = column_dict.get('パスワード')
-
-        if email_col_index is None or password_col_index is None:
-            print("エラー: 'メールアドレス' または 'パスワード' 列が見つかりません。")
-            return user_info_list
+        required_columns = ['メールアドレス', 'パスワード', 'アカウント作成', '番号認証']
+        for col in required_columns:
+            if col not in column_dict:
+                print(f"エラー: '{col}' 列が見つかりません。")
+                return user_info_list
 
         for row_number, row in enumerate(all_data[start_row - 1:end_row]):
+            # アカウント未作成または番号認証まで未完了の場合はスキップ
+            if row[column_dict.get('アカウント作成') - 1].strip() == "" or row[column_dict.get('番号認証') - 1].strip() == "":
+                print(f"スキップ: 行 {row_number + start_row} は抽選条件を満たしていません。")
+                continue
+
             # 書き込み対象の列が指定されている場合、既に値が入っている行はスキップ
             if write_col:
                 target_column_index = get_column_number_by_alphabet(write_col)
-                if row[target_column_index - 1].strip() != "":
-                    print(f"スキップ: 行 {row_number + start_row} は既に処理済みです。")
-                    continue
+                add_flg = False
+                for c in range(top_p):
+                    target_column_index_c = target_column_index + c
+                    if extract_type == 'apply_lottery':
+                        if row[target_column_index - 1].strip() == "":
+                            add_flg = True
+                            break
+                        else:
+                            print(f"スキップ: 行 {row_number + start_row} は既に処理済みです。")
 
-            user_info = {
-                'row_number': row_number + start_row,
-                'email': row[email_col_index - 1],
-                'password': row[password_col_index - 1]
-            }
-            user_info_list.append(user_info)
+                    elif extract_type == 'check_results':
+                        if row[target_column_index_c - 1].strip() not in ["当選", "落選"]:
+                            add_flg = True
+                            break
+                        else:
+                            print(f"スキップ: 行 {row_number + start_row} は既にチェック済みです。")
+
+                if add_flg:
+                    user_info_list.append({
+                        'row_number': row_number + start_row,
+                        'email': row[column_dict.get('メールアドレス') - 1],
+                        'password': row[column_dict.get('パスワード') - 1]
+                    })
+
         return user_info_list
+
 
     def extract_registration_user_info(self, all_data, start_row=4, end_row=5):
         """

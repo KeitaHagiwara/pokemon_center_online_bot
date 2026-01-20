@@ -63,6 +63,15 @@ class AuthenticationService:
     def __init__(self):
         pass
 
+    def delete_token(self):
+        """既存のトークンファイルを削除する"""
+        token_path = os.path.join(credentials_dir_path, token_file_name)
+        if os.path.exists(token_path):
+            os.remove(token_path)
+            print("🗑️ 既存のトークンファイルを削除しました")
+        else:
+            print("ℹ️ トークンファイルは存在しません")
+
     def authenticate(self):
         """
         Gmail APIの認証を行う
@@ -234,9 +243,9 @@ class ExtractService:
         return match.group(1) if match else None
 
 
-def extract_target_str_from_gmail_text_in_5min(to_email, subject_keyword, email_type="passcode"):
+def extract_target_str_from_gmail_text_in_3min(to_email, subject_keyword, email_type="passcode"):
     """
-    Gmailから欲しい情報を抽出する（5分以内のメールのみ）
+    Gmailから欲しい情報を抽出する（3分以内のメールのみ）
 
     Args:
         to_email: 送信先メールアドレス
@@ -252,9 +261,9 @@ def extract_target_str_from_gmail_text_in_5min(to_email, subject_keyword, email_
         creds = AuthenticationService().authenticate()
         print("✅ 認証成功!")
 
-        # 現在時刻から5分前の時刻を計算
+        # 現在時刻から3分前の時刻を計算
         now = datetime.datetime.now(datetime.timezone.utc)
-        one_minute_ago = now - datetime.timedelta(minutes=5)
+        one_minute_ago = now - datetime.timedelta(minutes=3)
         print(f"⏰ 検索対象時間: {one_minute_ago.strftime('%Y-%m-%d %H:%M:%S')} 以降")
 
         # 検索条件を設定する
@@ -269,13 +278,13 @@ def extract_target_str_from_gmail_text_in_5min(to_email, subject_keyword, email_
         messages = client.get_mail_list(MAIL_COUNTS, query)
 
         target_str = None
-        recent_messages = []  # 5分以内のメールを格納
+        recent_messages = []  # 3分以内のメールを格納
         if not messages:
             print('📭 指定条件のメールが見つかりませんでした。')
             print('💡 ヒント: Pokemon Centerからのメールがない場合は、SEARCH_CRITERIAを変更してください')
             print('💡 例: SEARCH_CRITERIA = {"from": "", "to": "", "subject": ""} # すべてのメールを検索')
         else:
-            print(f'📬 {len(messages)}件のメールを取得しました。5分以内のメールを絞り込み中...\n')
+            print(f'📬 {len(messages)}件のメールを取得しました。3分以内のメールを絞り込み中...\n')
 
             # メールの日時チェックと絞り込み
             for i, message in enumerate(messages, 1):
@@ -299,9 +308,9 @@ def extract_target_str_from_gmail_text_in_5min(to_email, subject_keyword, email_
 
                         print(f'📧 メール {i}: {email_datetime.strftime("%Y-%m-%d %H:%M:%S UTC")}')
 
-                        # 5分以内のメールかチェック
+                        # 3分以内のメールかチェック
                         if email_datetime >= one_minute_ago:
-                            print(f'✅ 5分以内のメールです！')
+                            print(f'✅ 3分以内のメールです！')
                             recent_messages.append((message_id, result, email_datetime))
                         else:
                             time_diff = (now - email_datetime).total_seconds()
@@ -316,11 +325,11 @@ def extract_target_str_from_gmail_text_in_5min(to_email, subject_keyword, email_
                 except Exception as e:
                     print(f'❌ メール {i} の取得に失敗: {e}')
 
-            # 5分以内のメールからパスコードを抽出
+            # 3分以内のメールからパスコードを抽出
             if not recent_messages:
-                print('📭 5分以内に受信したメールが見つかりませんでした。')
+                print('📭 3分以内に受信したメールが見つかりませんでした。')
             else:
-                print(f'\n🎯 5分以内のメール: {len(recent_messages)}件')
+                print(f'\n🎯 3分以内のメール: {len(recent_messages)}件')
                 print('─' * 80)
 
                 # 最新のメールから順に処理（日時でソート）
@@ -349,7 +358,7 @@ def extract_target_str_from_gmail_text_in_5min(to_email, subject_keyword, email_
                         break  # 最新のパスコードを取得したらループを抜ける
 
                 if not target_str:
-                    print(f'❌ 5分以内のメールから{EMAIL_TYPE_DICT[email_type]["name"]}が見つかりませんでした。')
+                    print(f'❌ 3分以内のメールから{EMAIL_TYPE_DICT[email_type]["name"]}が見つかりませんでした。')
 
         return target_str
 

@@ -43,3 +43,12 @@ appium
 ```
 python sample.py
 ```
+
+## PyQtアプリの起動方法
+```
+# 通常の起動
+python qt_app.py
+
+# デバッグモード(ホットリロード)での起動
+python qt_dev_runner.py qt_app.py
+```
