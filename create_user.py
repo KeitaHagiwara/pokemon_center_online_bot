@@ -214,7 +214,7 @@ if __name__ == '__main__':
     ss = SpreadsheetApiClient()
 
     for loop in range(RETRY_LOOP):
-        print(f"{loop}回目の処理を開始します")
+        print(f"{loop+1}回目の処理を開始します")
 
         # スプレッドシートの全データをDataFrame形式で取得
         all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
@@ -223,6 +223,9 @@ if __name__ == '__main__':
         print("---------------")
         print(f"作成するユーザー数: {len(registration_user_info_list)}")
         print("---------------")
+        if not registration_user_info_list:
+            print("決済対象ユーザーが存在しないため、処理を終了します。")
+            break
 
         print("Appiumドライバーを初期化中...")
         appium_utils = AppiumUtilities()

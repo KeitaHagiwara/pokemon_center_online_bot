@@ -26,8 +26,8 @@ def main(driver, appium_utils, user_info, target_product_name_dict):
     print(f"password: {password}")
 
     # IPアドレスの確認
-    driver.get("https://www.cman.jp/network/support/go_access.cgi")
-    time.sleep(3)
+    # driver.get("https://www.cman.jp/network/support/go_access.cgi")
+    # time.sleep(3)
 
     try:
 
@@ -36,16 +36,16 @@ def main(driver, appium_utils, user_info, target_product_name_dict):
         if not is_logged_in:
             raise Exception("ログインに失敗しました")
 
-        driver.get("https://www.pokemoncenter-online.com/lottery-history/")
+        driver.get("https://www.pokemoncenter-online.com/order-history/")
         time.sleep(random.uniform(5, 10))
 
-        target_lottery_result = None
+        target_shipping_result = None
 
         for target_product_name, target_product_column in target_product_name_dict.items():
-            print(f"\n=== 抽選結果確認対象商品: {target_product_name} ===")
+            print(f"\n=== 発送ステータス確認対象商品: {target_product_name} ===")
 
             for index in range(5):
-                print(f"抽選結果を取得します (index={index})")
+                print(f"ステータスを取得します (index={index})")
 
                 try:
                     # 対象の商品かをチェックする
@@ -53,23 +53,23 @@ def main(driver, appium_utils, user_info, target_product_name_dict):
                     product_name = product_names[index]
                     print(product_name.get_attribute("innerText"))
                     if target_product_name not in product_name.get_attribute("innerText"):
-                        print(f"❌ {index+1}個目の商品は、今回の結果取得対象の抽選ではありません")
+                        print(f"❌ {index+1}個目の商品は、今回の結果取得対象の商品ではありません")
                         continue
                     else:
-                        print(f"✅ {index+1}個目の商品は、今回の結果取得対象の抽選です")
-                        # 抽選結果を安全に取得
-                        lottery_results = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'txtBox01', attempt=index)
-                        target_lottery_result = lottery_results[index].get_attribute('innerText')
+                        print(f"✅ {index+1}個目の商品は、今回の結果取得対象の商品です")
+                        # 発送ステータスを安全に取得
+                        shipping_status = appium_utils.safe_find_elements(AppiumBy.CSS_SELECTOR, '.comReceiptBox .txtList li.finish', attempt=index)
+                        print(shipping_status)
+                        target_shipping_result = shipping_status[index].get_attribute('innerText')
 
-                        print(f"抽選結果: {target_lottery_result}")
-                        # 抽選結果が「当選」の場合のみスプレッドシートに書き込む
-                        # if check_result == "当選":
+                        print(f"発送ステータス: {target_shipping_result}")
+                        # 発送ステータスをスプレッドシートに書き込む
                         ss.write_to_cell(
                             spreadsheet_id=SPREADSHEET_ID,
                             sheet_name=SHEET_NAME,
                             row=row_number,
                             column=target_product_column,
-                            value=target_lottery_result
+                            value=target_shipping_result
                         )
                         break
 
@@ -77,7 +77,7 @@ def main(driver, appium_utils, user_info, target_product_name_dict):
                     print(f"❌ {ve}")
 
                 except Exception as e:
-                    print(f"❌ 抽選申し込み {index + 1} でエラーが発生: {e}")
+                    print(f"❌ 発送ステータス確認 {index + 1} でエラーが発生: {e}")
 
     except Exception as e:
         print(f"エラーが発生しました: {e}")
@@ -94,8 +94,8 @@ def main(driver, appium_utils, user_info, target_product_name_dict):
 
 if __name__ == '__main__':
 
-    WRITE_COL = 'Z'  # 抽選申し込み結果を書き込む列
-    TOP_P = 2 # 抽選申し込みを行う上位件件数
+    WRITE_COL = 'Z'  # 発送ステータスを書き込む列
+    TOP_P = 2 # 発送ステータスを確認する上位件数
 
     START_ROW = 4
     END_ROW = 87
@@ -109,7 +109,7 @@ if __name__ == '__main__':
         # スプレッドシートの全データをDataFrame形式で取得
         all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
 
-        user_info_list = ss.extract_apply_lottery_user_info(all_data, START_ROW, END_ROW, WRITE_COL, TOP_P, 'check_results')
+        user_info_list = ss.extract_apply_lottery_user_info(all_data, START_ROW, END_ROW, WRITE_COL, TOP_P, 'check_shipping_status')
         print(json.dumps(user_info_list, indent=2, ensure_ascii=False))
         print("---------------")
         print(f"合計ユーザー数: {len(user_info_list)}")

@@ -118,7 +118,7 @@ class SpreadsheetApiClient:
             end_row (int or None): 抽出を終了する行番号（1始まり）、Noneの場合は最後の行まで
             write_col (str): 書き込み対象の列（A始まり）
             top_p (int): 上位件数
-            extract_type (str): 抽出タイプ ('apply_lottery' または 'check_results')
+            extract_type (str): 抽出タイプ ('apply_lottery' or 'check_results' or 'check_shipping_status')
 
         Returns:
             list: ユーザー情報のリスト
@@ -146,6 +146,7 @@ class SpreadsheetApiClient:
                 for c in range(top_p):
                     target_column_index_c = target_column_index + c
                     if extract_type == 'apply_lottery':
+                        # 空欄の場合に追加
                         if row[target_column_index - 1].strip() == "":
                             add_flg = True
                             break
@@ -153,11 +154,20 @@ class SpreadsheetApiClient:
                             print(f"スキップ: 行 {row_number + start_row} は既に処理済みです。")
 
                     elif extract_type == 'check_results':
+                        # 当選もしくは落選以外の場合に追加
                         if row[target_column_index_c - 1].strip() not in ["当選", "落選"]:
                             add_flg = True
                             break
                         else:
                             print(f"スキップ: 行 {row_number + start_row} は既にチェック済みです。")
+
+                    elif extract_type == 'check_shipping_status':
+                        # 決済完了している場合に追加
+                        if row[target_column_index_c - 1].strip() in ["決済"]:
+                            add_flg = True
+                            break
+                        else:
+                            print(f"スキップ: 行 {row_number + start_row} は決済が未完了です。")
 
                 if add_flg:
                     user_info_list.append({
