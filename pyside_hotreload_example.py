@@ -1,7 +1,7 @@
 """UI定義を外部ファイルに分離してリロード可能にする例"""
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton
-from PyQt6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton
+from PySide6.QtCore import QTimer
 
 
 class HotReloadWindow(QMainWindow):

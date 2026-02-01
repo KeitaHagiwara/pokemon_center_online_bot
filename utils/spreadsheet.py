@@ -127,7 +127,7 @@ class SpreadsheetApiClient:
         user_info_list = []
 
         column_dict = self.get_column_dict(all_data)
-        required_columns = ['メールアドレス', 'パスワード', 'アカウント作成', '番号認証']
+        required_columns = ['ラベル', 'メールアドレス', 'パスワード', 'アカウント作成', '番号認証']
         for col in required_columns:
             if col not in column_dict:
                 print(f"エラー: '{col}' 列が見つかりません。")
@@ -143,37 +143,46 @@ class SpreadsheetApiClient:
             if write_col:
                 target_column_index = get_column_number_by_alphabet(write_col)
                 add_flg = False
+                header_row = all_data[HEADER_ROWS - 1]  # ヘッダー行を取得
+                target_product_dict = {}
                 for c in range(top_p):
                     target_column_index_c = target_column_index + c
+                    product_name = header_row[target_column_index_c - 1].strip()
                     if extract_type == 'apply_lottery':
                         # 空欄の場合に追加
                         if row[target_column_index - 1].strip() == "":
                             add_flg = True
-                            break
+                            target_product_dict[product_name] = target_column_index_c
+                            continue
                         else:
                             print(f"スキップ: 行 {row_number + start_row} は既に処理済みです。")
 
                     elif extract_type == 'check_results':
-                        # 当選もしくは落選以外の場合に追加
-                        if row[target_column_index_c - 1].strip() not in ["当選", "落選"]:
+                        # 当選もしくは落選以外の場合に追加（空白のものは対象外 -> 空白のものは抽選への申し込みすら行われていないため、それのアカウントを除外する必要がある。）
+                        if row[target_column_index_c - 1].strip() not in ["当選", "落選"] and row[target_column_index_c - 1].strip() != "":
                             add_flg = True
-                            break
+                            target_product_dict[product_name] = target_column_index_c
+                            continue
                         else:
                             print(f"スキップ: 行 {row_number + start_row} は既にチェック済みです。")
 
                     elif extract_type == 'check_shipping_status':
-                        # 決済完了している場合に追加
-                        if row[target_column_index_c - 1].strip() in ["決済"]:
+                        # 落選および発送済み以外の場合に追加（空白のものは対象外 -> 空白のものは抽選への申し込みすら行われていないため、それのアカウントを除外する必要がある。）
+                        if row[target_column_index_c - 1].strip() not in ["落選", "発送済み"] and row[target_column_index_c - 1].strip() != "":
                             add_flg = True
-                            break
+                            target_product_dict[product_name] = target_column_index_c
+                            continue
                         else:
                             print(f"スキップ: 行 {row_number + start_row} は決済が未完了です。")
+
 
                 if add_flg:
                     user_info_list.append({
                         'row_number': row_number + start_row,
+                        'label': row[column_dict.get('ラベル') - 1],
                         'email': row[column_dict.get('メールアドレス') - 1],
-                        'password': row[column_dict.get('パスワード') - 1]
+                        'password': row[column_dict.get('パスワード') - 1],
+                        'target_product_dict': target_product_dict
                     })
 
         return user_info_list
@@ -283,31 +292,31 @@ class SpreadsheetApiClient:
             payment_user_info_list.append(user_info)
         return payment_user_info_list
 
-    def get_check_target_product_name_dict(self, all_data, column_alphabet, top_p):
-        """
-        指定した行から確認対象の商品名を取得する
+    # def get_check_target_product_name_dict(self, all_data, column_alphabet, top_p):
+    #     """
+    #     指定した行から確認対象の商品名を取得する
 
-        Args:
-            all_data (list): スプレッドシートの全データ
-            column_alphabet (str): 行番号（A始まり）
-            top_p (int): 上位件数
+    #     Args:
+    #         all_data (list): スプレッドシートの全データ
+    #         column_alphabet (str): 行番号（A始まり）
+    #         top_p (int): 上位件数
 
-        Returns:
-            dict: 確認対象の商品名の辞書
-        """
-        column_dict = self.get_column_dict(all_data)
-        column_index = get_column_number_by_alphabet(column_alphabet)
+    #     Returns:
+    #         dict: 確認対象の商品名の辞書
+    #     """
+    #     column_dict = self.get_column_dict(all_data)
+    #     column_index = get_column_number_by_alphabet(column_alphabet)
 
-        target_product_name_dict = {}
-        # column_alphabetから始まってtop_p個分のカラムを取得
-        for i in range(top_p):
-            target_col_index = column_index + i
-            for k, v in column_dict.items():
-                if v == target_col_index:
-                    target_product_name_dict[k] = v
-                    break
+    #     target_product_name_dict = {}
+    #     # column_alphabetから始まってtop_p個分のカラムを取得
+    #     for i in range(top_p):
+    #         target_col_index = column_index + i
+    #         for k, v in column_dict.items():
+    #             if v == target_col_index:
+    #                 target_product_name_dict[k] = v
+    #                 break
 
-        return target_product_name_dict
+    #     return target_product_name_dict
 
     def write_to_cell(self, spreadsheet_id, sheet_name, row, column, value):
         """

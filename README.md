@@ -44,11 +44,20 @@ appium
 python sample.py
 ```
 
-## PyQtアプリの起動方法
+## PySideアプリの起動方法
 ```
 # 通常の起動
-python qt_app.py
+python pyside_app.py
 
 # デバッグモード(ホットリロード)での起動
-python qt_dev_runner.py qt_app.py
+python pyside_dev_runner.py pyside_app.py
+```
+
+## アプリケーションのビルド
+```
+# 本番用配布ビルド
+pyinstaller pyside_app.spec --noconfirm
+
+# 開発用ビルド（コンソールウィンドウを表示）
+pyinstaller pyside_app_dev.spec --noconfirm
 ```

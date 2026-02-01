@@ -4,6 +4,7 @@ added_files = [
     # Pythonモジュール（scrapingとutils）
     ('scraping', 'scraping'),
     ('utils', 'utils'),
+    ('components', 'components'),
 
     # env
     ('.env', '.'),
@@ -19,7 +20,7 @@ added_files = [
 ]
 
 a = Analysis(
-    ['qt_app.py'],
+    ['pyside_app.py'],
     pathex=[],
     binaries=[],
     datas=added_files,
@@ -32,10 +33,9 @@ a = Analysis(
         'create_user',
         'make_payment',
         'dotenv',
-        'PyQt6.QtCore',
-        'PyQt6.QtWidgets',
-        'PyQt6.QtGui',
-        'PyQt6.sip',
+        'PySide6.QtCore',
+        'PySide6.QtWidgets',
+        'PySide6.QtGui',
     ],
     hookspath=[],
     hooksconfig={},
@@ -53,12 +53,12 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='qt_app',
-    debug=True,
+    name='pyside_app',
+    debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -68,8 +68,7 @@ exe = EXE(
 
 app = BUNDLE(
     exe,
-    name='サンプルアプリケーション.app',
+    name='ポケセンオンライン自動化ツール.app',
     icon=None,
-    bundle_identifier='com.sample.qtsample',
+    bundle_identifier='com.sample.pyside_sample',
 )
-

@@ -38,6 +38,17 @@ function createNewUser() {
   const streetAddressValue = sheet.getRange("N2").getValue(); // 番地マスタ
   const buildingValue = sheet.getRange("O2").getValue();  // 建物名・部屋番号マスタ
 
+  // // 番地マスタが11文字以内になっていること
+  // if (streetAddressValue.length > 11) {
+  //   Browser.msgBox("デフォルトで設定する番地（N2セル）は11文字以内で設定してください。")
+  //   return
+  // }
+  // // 建物名・部屋番号マスタが11文字以内になっていること
+  // if (buildingValue.length > 11) {
+  //   Browser.msgBox("デフォルトで設定する建物名・部屋番号（O2セル）は11文字以内で設定してください。")
+  //   return
+  // }
+
   // メールアドレス列の最終行を取得
   const lastRow = sheet.getRange(startRow, emailCol, sheet.getLastRow() - startRow + 1, 1)
     .getValues()
@@ -67,13 +78,20 @@ function createNewUser() {
     if (accountCreated !== "済み") {
       // ダミーの情報を生成
       dummyRow = getRandomRowFromDummyNames();
-      // dummyLastName = dummyRow[headerColumnsDummy["姓"] - 1]
-      // dummyLastNameKana = dummyRow[headerColumnsDummy["セイ"] - 1]
-      // dummyLastNameRome = convertToUpperCase(dummyRow[headerColumnsDummy["Sei"] - 1])
+      if (lastNameValue.trim() == "" || lastNameKanaValue.trim() == "" || lastNameRomeValue.trim() == "") {
+        dummyLastName = dummyRow[headerColumnsDummy["姓"] - 1]
+        dummyLastNameKana = dummyRow[headerColumnsDummy["セイ"] - 1]
+        dummyLastNameRome = dummyRow[headerColumnsDummy["Sei"] - 1]
+      } else {
+        dummyLastName = lastNameValue
+        dummyLastNameKana = lastNameKanaValue
+        dummyLastNameRome = lastNameRomeValue
+      }
       dummyFirstName = dummyRow[headerColumnsDummy["名"] - 1]
       dummyFirstNameKana = dummyRow[headerColumnsDummy["メイ"] - 1]
-      dummyFirstNameRome = convertToUpperCase(dummyRow[headerColumnsDummy["Mei"] - 1])
-      dummyphoneNumber = generateDummyPhoneNumber()
+      dummyFirstNameRome = dummyRow[headerColumnsDummy["Mei"] - 1]
+      dummyPhoneNumber = generateDummyPhoneNumber()
+      dummyBirthDate = (birthdayValue == "") ? generateRandomBirthDate() : birthdayValue
 
       // 番地のランダム値を生成する
       let streetAddressPrefix = ""
@@ -109,14 +127,14 @@ function createNewUser() {
 
       // 各列に値を設定
       sheet.getRange(row, passwordCol).setValue(passwordValue);
-      sheet.getRange(row, lastNameCol).setValue(lastNameValue);
+      sheet.getRange(row, lastNameCol).setValue(dummyLastName);
       sheet.getRange(row, firstNameCol).setValue(dummyFirstName);
-      sheet.getRange(row, lastNameKanaCol).setValue(lastNameKanaValue);
+      sheet.getRange(row, lastNameKanaCol).setValue(dummyLastNameKana);
       sheet.getRange(row, firstNameKanaCol).setValue(dummyFirstNameKana);
-      sheet.getRange(row, lastNameRomeCol).setValue(lastNameRomeValue);
-      sheet.getRange(row, firstNameRomeCol).setValue(dummyFirstNameRome);
-      sheet.getRange(row, phoneNumberCol).setValue(dummyphoneNumber);
-      sheet.getRange(row, birthdayCol).setValue(birthdayValue);
+      sheet.getRange(row, lastNameRomeCol).setValue(convertToUpperCase(dummyLastNameRome));
+      sheet.getRange(row, firstNameRomeCol).setValue(convertToUpperCase(dummyFirstNameRome));
+      sheet.getRange(row, phoneNumberCol).setValue(dummyPhoneNumber);
+      sheet.getRange(row, birthdayCol).setValue(dummyBirthDate);
       sheet.getRange(row, postalCodeCol).setValue(postalCodeValue);
       sheet.getRange(row, streetAddressCol).setValue(streetAddressValueUnique)
       sheet.getRange(row, buildingCol).setValue(buildingValueUnique);
@@ -219,6 +237,35 @@ function getRandomRowFromDummyNames() {
   return rowData;
 }
 
+/**
+ * ランダムな生年月日を生成する（yyyy/mm/dd形式）
+ *
+ * @param {number} minAge 最小年齢（デフォルト: 18）
+ * @param {number} maxAge 最大年齢（デフォルト: 65）
+ * @return {string} yyyy/mm/dd形式の生年月日
+ */
+function generateRandomBirthDate(minAge = 18, maxAge = 65) {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+
+  // 年齢の範囲から年をランダムに選択
+  const birthYear = currentYear - Math.floor(Math.random() * (maxAge - minAge + 1)) - minAge;
+
+  // 月をランダムに選択（1-12）
+  const birthMonth = Math.floor(Math.random() * 12) + 1;
+
+  // その月の最大日数を取得
+  const maxDay = new Date(birthYear, birthMonth, 0).getDate();
+
+  // 日をランダムに選択
+  const birthDay = Math.floor(Math.random() * maxDay) + 1;
+
+  // yyyy/mm/dd形式にフォーマット
+  const formattedMonth = String(birthMonth).padStart(2, '0');
+  const formattedDay = String(birthDay).padStart(2, '0');
+
+  return `${birthYear}/${formattedMonth}/${formattedDay}`;
+}
 
 /**
  * 半角英数字を全角に変換する

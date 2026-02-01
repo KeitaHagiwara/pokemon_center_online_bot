@@ -11,12 +11,15 @@ from scraping.ios.appium_utilities import AppiumUtilities
 from utils.spreadsheet import SpreadsheetApiClient
 from utils.gmail import extract_target_str_from_gmail_text_in_3min
 from utils.common import get_column_number_by_alphabet
+from utils.logger import display_logs
 from config import SPREADSHEET_ID, SHEET_NAME
 
 DEBUG_MODE = False
 RETRY_LOOP = 3
 MAX_RETRY_AUTH_LINK = 10
 WRITE_COL = 'B'  # アカウント作成結果を書き込む列
+
+ss = SpreadsheetApiClient()
 
 def input_form(driver, selector_obj, selector_value, input_value, is_selectbox=False):
     try:
@@ -37,7 +40,7 @@ def input_form(driver, selector_obj, selector_value, input_value, is_selectbox=F
     except (NoSuchElementException, TimeoutException) as e:
         print(f"要素が見つかりません: {selector_obj} - {e}")
 
-def main(driver, appium_utils, user_info):
+def main(driver, appium_utils, user_info, log_callback=None):
     """新規ユーザー作成処理"""
 
     # IPアドレスの確認
@@ -46,20 +49,20 @@ def main(driver, appium_utils, user_info):
 
     try:
 
-        print("新規会員登録ページに移動中...")
+        display_logs(log_callback, "新規会員登録ページに移動中...")
         driver.get("https://www.pokemoncenter-online.com/login/")
         time.sleep(random.uniform(5, 10))
 
         # メールアドレスを入力して仮登録を実施する
         email = user_info["email"]
-        print(f"メールアドレスを入力中...")
+        display_logs(log_callback, f"メールアドレスを入力中...")
         email_form = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((AppiumBy.ID, 'login-form-regist-email'))
         )
         email_form.send_keys(email)
         time.sleep(random.uniform(3, 5))
 
-        print("新規会員登録ボタンをクリック中...")
+        display_logs(log_callback, "新規会員登録ボタンをクリック中...")
         user_register_button = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((AppiumBy.ID, 'form2Button'))
         )
@@ -72,7 +75,7 @@ def main(driver, appium_utils, user_info):
         )
         tmp_register_button.click()
         time.sleep(random.uniform(3, 5))
-        print("✅ 仮登録が完了しました。メールを確認してください。")
+        display_logs(log_callback, "✅ 仮登録が完了しました。メールを確認してください。")
 
         # 認証リンク付きメールを取得してクリックする
         for retry_i in range(MAX_RETRY_AUTH_LINK):
@@ -84,44 +87,44 @@ def main(driver, appium_utils, user_info):
 
         # auth_link = "https://www.pokemoncenter-online.com/new-customer/?token=Jv8ySXf%2FGsaBOv8fEs7WdkO%2FVbWSVZBvq8aQgmTg9Ck%3D"
         # auth_linkのページへ遷移する
-        print("認証リンクのページに移動中...")
+        display_logs(log_callback, "認証リンクのページに移動中...")
         driver.get(auth_link)
 
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((AppiumBy.TAG_NAME, "body")))
-        print("ページの読み込み完了")
+        display_logs(log_callback, "ページの読み込み完了")
 
         # お名前を入力
-        print("--- Name Input ---")
+        display_logs(log_callback, "--- Name Input ---")
         input_form(driver, AppiumBy.ID, "registration-form-fname", user_info["name"])
         # お名前(カナ)を入力
-        print("--- Name Kana Input ---")
+        display_logs("--- Name Kana Input ---")
         input_form(driver, AppiumBy.ID, "registration-form-kana", user_info["name_kana"])
         # 生年月日(年)を入力
-        print("--- Birth Year Input ---")
+        display_logs(log_callback, "--- Birth Year Input ---")
         input_form(driver, AppiumBy.ID, "registration-form-birthdayyear", user_info["birth_year"], is_selectbox=True)
         # 生年月日(月)を入力
-        print("--- Birth Month Input ---")
+        display_logs(log_callback, "--- Birth Month Input ---")
         input_form(driver, AppiumBy.ID, "registration-form-birthdaymonth", user_info["birth_month"], is_selectbox=True)
         # 生年月日(日)を入力
-        print("--- Birth Day Input ---")
+        display_logs(log_callback, "--- Birth Day Input ---")
         input_form(driver, AppiumBy.ID, "registration-form-birthdayday", user_info["birth_day"], is_selectbox=True)
         # 郵便番号を入力
-        print("--- Postcode Input ---")
+        display_logs(log_callback, "--- Postcode Input ---")
         input_form(driver, AppiumBy.ID, "registration-form-postcode", user_info["postcode"])
         # 住所(市区町村・番地)を入力
-        print("--- Street Address Input ---")
+        display_logs(log_callback, "--- Street Address Input ---")
         input_form(driver, AppiumBy.ID, "registration-form-address-line1", user_info["street_address"])
         # 住所(建物名・部屋番号)を入力
-        print("--- Building Input ---")
+        display_logs(log_callback, "--- Building Input ---")
         input_form(driver, AppiumBy.ID, "registration-form-address-line2", user_info["building"])
         # 電話番号を入力
-        print("--- Telephone Input ---")
+        display_logs(log_callback, "--- Telephone Input ---")
         input_form(driver, AppiumBy.NAME, "dwfrm_profile_customer_phone", user_info["tel"])
         # パスワードを入力
-        print("--- Password Input ---")
+        display_logs(log_callback, "--- Password Input ---")
         input_form(driver, AppiumBy.NAME, "dwfrm_profile_login_password", user_info["password"])
         # パスワード(確認)を入力
-        print("--- Confirm Password Input ---")
+        display_logs(log_callback, "--- Confirm Password Input ---")
         input_form(driver, AppiumBy.NAME, "dwfrm_profile_login_passwordconfirm", user_info["password"])
 
         # メールマガジン「受け取らない」を選択
@@ -136,7 +139,7 @@ def main(driver, appium_utils, user_info):
         time.sleep(2)
 
         # 利用規約に同意にチェック
-        print("--- Terms Checkbox Click ---")
+        display_logs(log_callback, "--- Terms Checkbox Click ---")
         terms_checkbox = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((AppiumBy.ID, "terms"))
         )
@@ -144,7 +147,7 @@ def main(driver, appium_utils, user_info):
         time.sleep(2)
 
         # プライバシーポリシーに同意にチェック
-        print("--- Privacy Policy Checkbox Click ---")
+        display_logs(log_callback, "--- Privacy Policy Checkbox Click ---")
         policy_checkbox = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((AppiumBy.ID, "privacyPolicy"))
         )
@@ -153,7 +156,7 @@ def main(driver, appium_utils, user_info):
 
         # 確認ボタンをクリック
         # FIXME: なぜかクリック完了しているのにエラーになることがあるため、try文で囲む
-        print("--- Confirm Button Click ---")
+        display_logs(log_callback, "--- Confirm Button Click ---")
         try:
             confirm_button = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((AppiumBy.ID, 'registration_button'))
@@ -164,7 +167,7 @@ def main(driver, appium_utils, user_info):
         time.sleep(5)
 
         # 登録ボタンをクリック
-        print("--- Submit Button Click ---")
+        display_logs(log_callback, "--- Submit Button Click ---")
         try:
             submit_button = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((AppiumBy.CLASS_NAME, 'submitButton'))
@@ -177,12 +180,10 @@ def main(driver, appium_utils, user_info):
         # 完了したかどうかをチェックする
         # FIXME: なぜかクリック完了しているのにエラーになることがあるため、try文で囲む
         if "会員登録が完了しました" in driver.page_source:
-            print("✅ 会員登録が完了しました。")
+            display_logs(log_callback, "✅ 会員登録が完了しました。")
         else:
             raise Exception("会員登録に失敗した可能性があります。ご確認ください。")
 
-        # スプレッドシートに結果を書き込む
-        ss = SpreadsheetApiClient()
         write_col_number = get_column_number_by_alphabet(WRITE_COL)
         ss.write_to_cell(
             spreadsheet_id=SPREADSHEET_ID,
@@ -193,25 +194,44 @@ def main(driver, appium_utils, user_info):
         )
 
     except Exception as e:
-        print(f"エラーが発生しました: {e}")
+        display_logs(log_callback, f"エラーが発生しました: {e}")
 
     finally:
         if not DEBUG_MODE:
         # ドライバーを終了
-            print("\nドライバーを終了中...")
+            display_logs(log_callback, "\nドライバーを終了中...")
             appium_utils.delete_browser_page()
             time.sleep(5)
-            print("完了しました")
+            display_logs(log_callback, "完了しました")
         else:
             pass
+
+def exec_create_new_accounts(start_row, end_row, log_callback=None):
+    """UIから呼び出す用のラッパー関数"""
+
+    all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
+
+    registration_user_info_list = ss.extract_registration_user_info(all_data, start_row, end_row)
+    display_logs(log_callback=None, msg=json.dumps(registration_user_info_list, indent=2, ensure_ascii=False))
+    display_logs(log_callback, "---------------")
+    display_logs(log_callback, f"作成するユーザー数: {len(registration_user_info_list)}")
+    display_logs(log_callback, "---------------")
+
+    display_logs(log_callback, "Appiumドライバーを初期化中...")
+    appium_utils = AppiumUtilities()
+
+    display_logs(log_callback, "Safariを起動しました")
+
+    driver = appium_utils.driver
+
+    # ユーザー登録実行処理
+    for user_info in registration_user_info_list:
+        main(driver, appium_utils, user_info, log_callback)
 
 if __name__ == '__main__':
 
     START_ROW = 75
     END_ROW = 165
-
-    # スプレッドシートからユーザー情報を取得する
-    ss = SpreadsheetApiClient()
 
     for loop in range(RETRY_LOOP):
         print(f"{loop+1}回目の処理を開始します")

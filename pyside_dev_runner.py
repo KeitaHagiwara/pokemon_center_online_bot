@@ -1,4 +1,4 @@
-"""PyQt開発用ホットリロードランナー"""
+"""PySide開発用ホットリロードランナー"""
 import sys
 import subprocess
 import time
@@ -7,7 +7,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 
-class PyQtReloader(FileSystemEventHandler):
+class PySideReloader(FileSystemEventHandler):
     """ファイル変更を監視してアプリを再起動"""
 
     def __init__(self, script_path):
@@ -49,7 +49,7 @@ class PyQtReloader(FileSystemEventHandler):
 
 def main():
     if len(sys.argv) < 2:
-        print("使い方: python qt_dev_runner.py <PyQtスクリプト.py>")
+        print("使い方: python pyside_dev_runner.py <PySideスクリプト.py>")
         sys.exit(1)
 
     script_path = sys.argv[1]
@@ -57,11 +57,11 @@ def main():
         print(f"エラー: ファイルが見つかりません: {script_path}")
         sys.exit(1)
 
-    print("PyQt開発用ホットリロードを開始します")
+    print("PySide開発用ホットリロードを開始します")
     print(f"監視対象: {Path.cwd()}")
     print("終了するには Ctrl+C を押してください\n")
 
-    reloader = PyQtReloader(script_path)
+    reloader = PySideReloader(script_path)
     observer = Observer()
     observer.schedule(reloader, path=str(Path.cwd()), recursive=True)
     observer.start()
