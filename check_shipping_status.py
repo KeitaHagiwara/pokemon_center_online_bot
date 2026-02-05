@@ -64,10 +64,15 @@ def main(driver, appium_utils, user_info, log_callback=None):
                         continue
                     else:
                         display_logs(log_callback, f"✅ {index+1}個目の商品は、今回の結果取得対象の商品です")
-                        # 発送ステータスを安全に取得
-                        shipping_status = appium_utils.safe_find_elements(AppiumBy.CSS_SELECTOR, '.comReceiptBox .txtList li.finish', attempt=index)
-                        display_logs(log_callback, shipping_status)
-                        target_shipping_result = shipping_status[index].get_attribute('innerText')
+                        # キャンセル済みになっているかチェック
+                        if "キャンセル済み" in driver.page_source:
+                            display_logs(log_callback, f"❌ {index+1}個目の商品はキャンセル済みです。")
+                            target_shipping_result = "キャンセル済み"
+                        else:
+                            # 発送ステータスを安全に取得
+                            shipping_status = appium_utils.safe_find_elements(AppiumBy.CSS_SELECTOR, '.comReceiptBox .txtList li.finish', attempt=index)
+                            display_logs(log_callback, shipping_status)
+                            target_shipping_result = shipping_status[index].get_attribute('innerText')
 
                         display_logs(log_callback, f"発送ステータス: {target_shipping_result}")
                         # 発送ステータスをスプレッドシートに書き込む
@@ -136,7 +141,7 @@ if __name__ == '__main__':
     WRITE_COL = 'Y'  # 発送ステータスを書き込む列
     TOP_P = 3 # 発送ステータスを確認する上位件数
 
-    START_ROW = 4
+    START_ROW = 27
     END_ROW = 87
 
     # for loop in range(RETRY_LOOP):
