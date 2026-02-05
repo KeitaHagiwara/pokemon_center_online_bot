@@ -5,7 +5,17 @@ from PySide6.QtWidgets import (
 
 
 def create_shipping_status_tab(main_window, START_ROW_DEFAULT, MAX_ROW):
-    """発送ステータス確認タブのUIを作成"""
+    """
+    発送ステータス確認タブのUIを作成
+
+    Args:
+        main_window: メインウィンドウのインスタンス
+        start_row_default: 開始行のデフォルト値
+        max_row: 最大行数
+
+    Returns:
+        QWidget: 抽選結果取得タブのウィジェット
+    """
     shipping_widget = QWidget()
     layout = QVBoxLayout()
 

@@ -45,4 +45,7 @@ Thumbs.db
 .venv/
 
 # credentials
-/credentials/*
+oauth.json
+credentials.json
+token.pickle
+sheet_info.json

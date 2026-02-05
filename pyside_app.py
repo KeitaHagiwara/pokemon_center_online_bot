@@ -4,7 +4,7 @@ import os
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QLineEdit, QTextEdit, QSpinBox,
-    QTabWidget, QGroupBox, QMessageBox
+    QTabWidget, QGroupBox, QMessageBox, QFileDialog
 )
 from PySide6.QtCore import Qt
 
@@ -26,6 +26,7 @@ from components.check_results.ui.check_results_tab import create_check_results_t
 from components.make_payment.ui.make_payment_tab import create_make_payment_tab
 from components.shipping_status.ui.shipping_status_tab import create_shipping_status_tab
 from components.create_user.ui.create_user_tab import create_create_user_tab
+from components.service_settings.ui.service_settings_tab import create_service_settings_tab
 
 # 機能関数のインポート
 from components.apply_lottery.function.apply_lottery_function import (
@@ -58,11 +59,23 @@ from components.create_user.function.create_user_function import (
     on_account_finished,
     on_account_stop
 )
+from components.service_settings.function.service_settings_function import (
+    on_upload_json,
+    on_upload_credentials,
+    on_save_sheet_id,
+    on_test_spreadsheet_connection,
+    on_gmail_login,
+    on_gmail_progress,
+    on_gmail_finished
+)
 
 # from test_function import test
-from initialize_gmail import initialize_gmail_oauth
-from test_function import test
+# from test_function import test
 from utils.common import get_base_path
+from config import (
+    CREDENTIALS_FILE_NAME,
+    OAUTH_FILE_NAME
+)
 
 START_ROW_DEFAULT = 4
 MAX_ROW = 10000
@@ -78,6 +91,7 @@ class MainWindow(QMainWindow):
         self.payment_worker = None  # 決済処理ワーカー
         self.shipping_worker = None  # 発送ステータス確認ワーカー
         self.account_worker = None  # アカウント作成ワーカー
+        self.gmail_worker = None  # Gmailログインワーカー
         self.init_ui()
 
     def init_ui(self):
@@ -148,154 +162,11 @@ class MainWindow(QMainWindow):
             # イベントを受け入れてアプリケーションを終了
             event.accept()
 
-    def create_shipping_status_tab(self):
-        """4. 発送ステータス確認タブ"""
-        shipping_widget = QWidget()
-        layout = QVBoxLayout()
-
-        # 設定グループ
-        settings_group = QGroupBox("実行設定")
-        settings_layout = QVBoxLayout()
-
-        # 開始行・終了行
-        row_layout = QHBoxLayout()
-        row_layout.addWidget(QLabel("開始行:"))
-        self.shipping_start_row = QSpinBox()
-        self.shipping_start_row.setRange(START_ROW_DEFAULT, MAX_ROW)
-        self.shipping_start_row.setValue(START_ROW_DEFAULT)
-        row_layout.addWidget(self.shipping_start_row)
-
-        row_layout.addWidget(QLabel("終了行:"))
-        self.shipping_end_row = QSpinBox()
-        self.shipping_end_row.setRange(START_ROW_DEFAULT, MAX_ROW)
-        self.shipping_end_row.setValue(10)
-        row_layout.addWidget(self.shipping_end_row)
-        row_layout.addStretch()
-        settings_layout.addLayout(row_layout)
-
-        # 書き込み列
-        col_layout = QHBoxLayout()
-        col_layout.addWidget(QLabel("発送ステータスの書き込み先の列番号:"))
-        self.shipping_write_col = QLineEdit()
-        self.shipping_write_col.setPlaceholderText("例: AB")
-        self.shipping_write_col.setMaximumWidth(100)
-        col_layout.addWidget(self.shipping_write_col)
-        col_layout.addStretch()
-        settings_layout.addLayout(col_layout)
-
-        # 上位件数
-        top_layout = QHBoxLayout()
-        top_layout.addWidget(QLabel("確認対象上位件数:"))
-        self.shipping_top_p = QSpinBox()
-        self.shipping_top_p.setRange(1, 10)
-        self.shipping_top_p.setValue(1)
-        top_layout.addWidget(self.shipping_top_p)
-        top_layout.addStretch()
-        settings_layout.addLayout(top_layout)
-
-        settings_group.setLayout(settings_layout)
-        layout.addWidget(settings_group)
-
-        # ログ表示エリア
-        log_group = QGroupBox("実行ログ")
-        log_layout = QVBoxLayout()
-        self.shipping_log = QTextEdit()
-        self.shipping_log.setReadOnly(True)
-        self.shipping_log.setPlaceholderText("実行ログがここに表示されます...")
-        log_layout.addWidget(self.shipping_log)
-        log_group.setLayout(log_layout)
-        layout.addWidget(log_group)
-
-        # 実行ボタン
-        button_layout = QHBoxLayout()
-        start_button = QPushButton("発送ステータス確認開始")
-        start_button.setStyleSheet("""
-            QPushButton {
-                background-color: #f1c40f;
-                color: white;
-                border: none;
-                padding: 12px 30px;
-                border-radius: 5px;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #f39c12;
-            }
-        """)
-        start_button.clicked.connect(self.on_shipping_status_start)
-        button_layout.addWidget(start_button)
-
-        stop_button = QPushButton("停止")
-        stop_button.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                padding: 12px 30px;
-                border-radius: 5px;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            }
-        """)
-        stop_button.clicked.connect(self.on_stop)
-        button_layout.addWidget(stop_button)
-        button_layout.addStretch()
-        layout.addLayout(button_layout)
-
-        shipping_widget.setLayout(layout)
-        self.tabs.addTab(shipping_widget, "発送ステータス確認")
 
     def create_settings_tab(self):
-        """6. 設定関連タブ"""
-        settings_widget = QWidget()
-        layout = QVBoxLayout()
-
-        # 設定グループ
-        settings_group = QGroupBox("Gmail設定")
-        settings_layout = QVBoxLayout()
-
-        # Gmailログインボタン
-        button_layout = QHBoxLayout()
-        gmail_login_button = QPushButton("Gmailログイン")
-        gmail_login_button.setStyleSheet("""
-            QPushButton {
-                background-color: #16a085;
-                color: white;
-                border: none;
-                padding: 12px 30px;
-                border-radius: 5px;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #138d75;
-            }
-        """)
-        gmail_login_button.clicked.connect(self.on_gmail_login)
-        button_layout.addWidget(gmail_login_button)
-        button_layout.addStretch()
-        settings_layout.addLayout(button_layout)
-
-        settings_group.setLayout(settings_layout)
-        layout.addWidget(settings_group)
-
-        # ログ表示エリア
-        log_group = QGroupBox("実行ログ")
-        log_layout = QVBoxLayout()
-        self.settings_log = QTextEdit()
-        self.settings_log.setReadOnly(True)
-        self.settings_log.setPlaceholderText("実行ログがここに表示されます...")
-        log_layout.addWidget(self.settings_log)
-        log_group.setLayout(log_layout)
-        layout.addWidget(log_group)
-
-        layout.addStretch()
-        settings_widget.setLayout(layout)
-        self.tabs.addTab(settings_widget, "設定関連")
+        """6. 設定関連タブ - 外部関数を呼び出し"""
+        settings_tab = create_service_settings_tab(self)
+        self.tabs.addTab(settings_tab, "設定関連")
 
     def on_iphone_connect(self):
         """iPhone接続処理 - 外部関数を呼び出し"""
@@ -309,12 +180,33 @@ class MainWindow(QMainWindow):
         """スクリプト実行完了時の処理 - 外部関数を呼び出し"""
         on_script_finished(self, success, message)
 
+    def on_upload_json(self):
+        """JSON設定ファイルのアップロード処理 - 外部関数を呼び出し"""
+        on_upload_json(self, MSG_SHOW_TIME)
+
+    def on_upload_credentials(self):
+        """Credentialsファイルのアップロード処理 - 外部関数を呼び出し"""
+        on_upload_credentials(self, MSG_SHOW_TIME)
+
+    def on_save_sheet_id(self):
+        """Sheet IDをJSONファイルに保存する処理 - 外部関数を呼び出し"""
+        on_save_sheet_id(self, MSG_SHOW_TIME)
+
+    def on_test_spreadsheet_connection(self):
+        """スプレッドシート接続確認処理 - 外部関数を呼び出し"""
+        on_test_spreadsheet_connection(self, MSG_SHOW_TIME)
+
     def on_gmail_login(self):
-        """Gmailログイン処理"""
-        self.settings_log.append("Gmailログイン処理を開始します...\n")
-        self.statusBar().showMessage("Gmailログイン処理中...", MSG_SHOW_TIME)
-        initialize_gmail_oauth(self.settings_log)
-        self.statusBar().showMessage("Gmailログイン処理完了", MSG_SHOW_TIME)
+        """Gmailログイン処理 - 外部関数を呼び出し"""
+        on_gmail_login(self, MSG_SHOW_TIME)
+
+    def on_gmail_progress(self, message):
+        """Gmailログイン処理の進捗を表示 - 外部関数を呼び出し"""
+        on_gmail_progress(self, message)
+
+    def on_gmail_finished(self, success, message):
+        """Gmailログイン処理完了時の処理 - 外部関数を呼び出し"""
+        on_gmail_finished(self, success, message, MSG_SHOW_TIME)
 
     def on_lottery_start(self):
         """抽選実行開始 - 外部関数を呼び出し"""

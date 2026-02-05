@@ -2,6 +2,7 @@ import subprocess
 import select
 import os
 import time
+import re
 from PySide6.QtCore import QThread, Signal
 
 
@@ -50,10 +51,10 @@ class ScriptWorker(QThread):
                 bufsize=1
             )
 
-            # 「Testing started」メッセージを待つ（タイムアウト: 3分）
+            # 「Testing started」メッセージを待つ（タイムアウト: 5分）
             success_message_found = False
             error_message_found = False
-            timeout = 180  # 3分（秒）
+            timeout = 300  # 5分（秒）
             start_time = time.time()
 
             print("[DEBUG] 'Testing started' メッセージを監視中...")
@@ -63,9 +64,9 @@ class ScriptWorker(QThread):
                     # タイムアウトチェック
                     elapsed_time = time.time() - start_time
                     if elapsed_time > timeout:
-                        print("[DEBUG] タイムアウト: 3分経過しても 'Testing started' が見つかりませんでした")
+                        print("[DEBUG] タイムアウト: 5分経過しても 'Testing started' が見つかりませんでした")
                         process.terminate()
-                        self.finished.emit(False, "タイムアウト: xcode_build.sh の実行が3分以内に完了しませんでした")
+                        self.finished.emit(False, "タイムアウト: xcode_build.sh の実行が5分以内に完了しませんでした")
                         return
 
                     # 非ブロッキングで標準出力をチェック（最大0.5秒待機）
@@ -81,7 +82,7 @@ class ScriptWorker(QThread):
                             print(f"[DEBUG] xcode output: {line.strip()}")
 
                             # 「Testing started」が見つかったか確認
-                            if "Testing started" in line:
+                            if "Testing started" in line or re.search(r"Test Case '.*' started\.", line):
                                 print("[DEBUG] 'Testing started' メッセージを検出しました！")
                                 success_message_found = True
                                 break

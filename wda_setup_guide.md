@@ -21,13 +21,13 @@ find ~/.appium -name "WebDriverAgent.xcodeproj" 2>/dev/null
 cd ~/.appium/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent
 
 # 既存の設定をクリーンアップ
-xcodebuild clean -project WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner -destination 'id=00008030-000268613A50402E'
+xcodebuild clean -project WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner -destination 'id=00008030-001818542233402E'
 
 # ビルド実行（エラーメッセージを確認）
 xcodebuild build-for-testing \
   -project WebDriverAgent.xcodeproj \
   -scheme WebDriverAgentRunner \
-  -destination 'id=00008030-000268613A50402E' \
+  -destination 'id=00008030-001818542233402E' \
   DEVELOPMENT_TEAM=C685BDU5S2 \
   CODE_SIGN_IDENTITY="Apple Development" \
   PRODUCT_BUNDLE_IDENTIFIER="com.keitahagiwara.WebDriverAgentRunner"
