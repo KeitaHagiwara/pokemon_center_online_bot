@@ -168,7 +168,7 @@ class SpreadsheetApiClient:
 
                     elif extract_type == 'check_shipping_status':
                         # 落選および発送済み以外の場合に追加（空白のものは対象外 -> 空白のものは抽選への申し込みすら行われていないため、それのアカウントを除外する必要がある。）
-                        if row[target_column_index_c - 1].strip() not in ["落選", "発送済み"] and row[target_column_index_c - 1].strip() != "":
+                        if row[target_column_index_c - 1].strip() not in ["落選", "発送済み", "キャンセル済み"] and row[target_column_index_c - 1].strip() != "":
                             add_flg = True
                             target_product_dict[product_name] = target_column_index_c
                             continue
