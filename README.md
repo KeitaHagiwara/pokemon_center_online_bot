@@ -33,6 +33,20 @@ xcode-select --install
 # WebDriverAgentの依存関係をインストール
 appium driver run xcuitest build-wda
 ```
+build-wdaのインストールでエラーが出た場合はiOSシミュレータが利用可能状態ではないため、シミュレータSDKをインストールする
+1. Xcodeを起動
+2. Xcode > Settings > Components > Platform Support からiOSをGetする
+3. ダウンロード後、Xcodeを再起動する
+4. simctlの確認
+```
+sudo xcode-select -s /Applications/Xcode.app
+xcode-select -p
+
+xcrun simctl list devicetypes
+xcrun simctl list runtimes
+xcrun simctl list devices
+```
+ここで対応するデバイスが出ていればOK。build-wdaのインストールを再実行する
 
 ## Appiumサーバーの起動
 ```

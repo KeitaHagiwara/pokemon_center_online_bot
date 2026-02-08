@@ -133,18 +133,31 @@ appium driver list
 - iPhoneは**ロック解除状態**を保つ
 - 初回実行時はWebDriverAgentのビルドに時間がかかる（1-2分程度）
 
+## Team IDを確認する
+```bash
+cd ~/.appium/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent
+
+xcodebuild -showBuildSettings -project WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner | grep DEVELOPMENT_TEAM
+```
+
 ## 証明書の設定
 ```bash
 cd ~/.appium/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent
 
+# 証明書を初期化したい場合
+xcodebuild clean \
+  -project WebDriverAgent.xcodeproj \
+  -scheme WebDriverAgentRunner \
+  -destination "id=00008030-001818542233402E"
+
 xcodebuild test-without-building \
   -xctestrun $(find . -name "*.xctestrun" | head -1) \
-  -destination 'id=00008030-000268613A50402E' \
+  -destination 'id=00008030-001818542233402E' \
   -allowProvisioningUpdates
 
 xcodebuild test \
   -project WebDriverAgent.xcodeproj \
   -scheme WebDriverAgentRunner \
-  -destination 'id=00008030-000268613A50402E' \
+  -destination 'id=00008030-001818542233402E' \
   -allowProvisioningUpdates
 ```

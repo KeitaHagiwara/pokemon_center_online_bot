@@ -28,9 +28,18 @@ xcodebuild build-for-testing \
   -project WebDriverAgent.xcodeproj \
   -scheme WebDriverAgentRunner \
   -destination 'id=00008030-001818542233402E' \
-  DEVELOPMENT_TEAM=C685BDU5S2 \
+  DEVELOPMENT_TEAM=LYJMR4D7JA \
   CODE_SIGN_IDENTITY="Apple Development" \
-  PRODUCT_BUNDLE_IDENTIFIER="com.keitahagiwara.WebDriverAgentRunner"
+  PRODUCT_BUNDLE_IDENTIFIER="com.ootaniryouhei.WebDriverAgentRunner"
+
+# 上記でエラーが出なければ以下を実行
+xcodebuild test \
+  -project WebDriverAgent.xcodeproj \
+  -scheme WebDriverAgentRunner \
+  -destination 'id=00008030-001818542233402E' \
+  DEVELOPMENT_TEAM=LYJMR4D7JA \
+  CODE_SIGN_IDENTITY="Apple Development" \
+  PRODUCT_BUNDLE_IDENTIFIER="com.ootaniryouhei.WebDriverAgentRunner"
 ```
 
 ### 3. よくあるエラーと解決策
