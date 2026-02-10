@@ -9,6 +9,8 @@ fi
 
 # 環境変数の利用例
 echo "DEVICE_ID: $UDID"
+echo "XCODE_ORG_ID: $XCODE_ORG_ID"
+echo "XCODE_BUNDLE_ID: $XCODE_BUNDLE_ID"
 
 cd ~/.appium/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent
 
@@ -21,4 +23,6 @@ xcodebuild test \
     -project WebDriverAgent.xcodeproj \
     -scheme WebDriverAgentRunner \
     -destination "id=$UDID" \
-    -allowProvisioningUpdates
+    DEVELOPMENT_TEAM=$XCODE_ORG_ID \
+    CODE_SIGN_IDENTITY="Apple Development" \
+    PRODUCT_BUNDLE_IDENTIFIER=$XCODE_BUNDLE_ID \

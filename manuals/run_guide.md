@@ -159,5 +159,7 @@ xcodebuild test \
   -project WebDriverAgent.xcodeproj \
   -scheme WebDriverAgentRunner \
   -destination 'id=00008030-001818542233402E' \
-  -allowProvisioningUpdates
+  DEVELOPMENT_TEAM=LYJMR4D7JA \
+  CODE_SIGN_IDENTITY="Apple Development" \
+  PRODUCT_BUNDLE_IDENTIFIER="com.ootaniryouhei.WebDriverAgentRunner" \
 ```
