@@ -148,18 +148,18 @@ cd ~/.appium/node_modules/appium-xcuitest-driver/node_modules/appium-webdriverag
 xcodebuild clean \
   -project WebDriverAgent.xcodeproj \
   -scheme WebDriverAgentRunner \
-  -destination "id=00008030-001818542233402E"
+  -destination "id=00008030-000268613A50402E"
 
 xcodebuild test-without-building \
   -xctestrun $(find . -name "*.xctestrun" | head -1) \
-  -destination 'id=00008030-001818542233402E' \
+  -destination 'id=00008030-000268613A50402E' \
   -allowProvisioningUpdates
 
 xcodebuild test \
   -project WebDriverAgent.xcodeproj \
   -scheme WebDriverAgentRunner \
-  -destination 'id=00008030-001818542233402E' \
-  DEVELOPMENT_TEAM=LYJMR4D7JA \
+  -destination 'id=00008030-000268613A50402E' \
+  DEVELOPMENT_TEAM=C4ZX8YN434 \
   CODE_SIGN_IDENTITY="Apple Development" \
-  PRODUCT_BUNDLE_IDENTIFIER="com.ootaniryouhei.WebDriverAgentRunner" \
+  PRODUCT_BUNDLE_IDENTIFIER="com.keitahagiwara.WebDriverAgentRunner" \
 ```

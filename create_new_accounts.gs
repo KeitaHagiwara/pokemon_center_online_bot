@@ -29,14 +29,14 @@ function createNewUser() {
   const buildingCol = headerColumns["建物名・部屋番号"];
 
   // マスタとして設定するデータを取得
-  const passwordValue = sheet.getRange("E2").getValue();  // パスワードマスタ
-  const lastNameValue = sheet.getRange("F2").getValue();  // 姓マスタ
-  const lastNameKanaValue = sheet.getRange("H2").getValue();  // セイマスタ
-  const lastNameRomeValue = sheet.getRange("J2").getValue();  // Seiマスタ
-  const birthdayValue = sheet.getRange("L2").getValue();  // 誕生日マスタ
-  const postalCodeValue = sheet.getRange("M2").getValue();  // 郵便番号マスタ
-  const streetAddressValue = sheet.getRange("N2").getValue(); // 番地マスタ
-  const buildingValue = sheet.getRange("O2").getValue();  // 建物名・部屋番号マスタ
+  const passwordValue = sheet.getRange("G2").getValue();  // パスワードマスタ
+  const lastNameValue = sheet.getRange("H2").getValue();  // 姓マスタ
+  const lastNameKanaValue = sheet.getRange("J2").getValue();  // セイマスタ
+  const lastNameRomeValue = sheet.getRange("L2").getValue();  // Seiマスタ
+  const birthdayValue = sheet.getRange("N2").getValue();  // 誕生日マスタ
+  const postalCodeValue = sheet.getRange("O2").getValue();  // 郵便番号マスタ
+  const streetAddressValue = sheet.getRange("P2").getValue(); // 番地マスタ
+  const buildingValue = sheet.getRange("Q2").getValue();  // 建物名・部屋番号マスタ
 
   // // 番地マスタが11文字以内になっていること
   // if (streetAddressValue.length > 11) {

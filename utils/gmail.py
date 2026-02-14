@@ -96,6 +96,10 @@ class AuthenticationService:
                 if creds and creds.expired and creds.refresh_token:
                     print("🔄 認証トークンを更新中...")
                     creds.refresh(Request())
+                    # 更新後のトークンを保存（重要！）
+                    with open(token_path, 'wb') as token:
+                        pickle.dump(creds, token)
+                    print("✅ トークンを更新しました")
                 else:
                     print("🔐 初回認証を開始...")
 
@@ -110,16 +114,23 @@ class AuthenticationService:
 
                     flow = InstalledAppFlow.from_client_secrets_file(credentials_file_path, scope)
                     print("🌐 ブラウザでGoogleアカウントにログインしてください...")
-                    creds = flow.run_local_server(port=0)
+                    # オフラインアクセスを有効化してリフレッシュトークンを取得
+                    creds = flow.run_local_server(
+                        port=0,
+                        access_type='offline',
+                        prompt='consent'
+                    )
+
+                    # 次回実行のために認証情報を保存
+                    with open(token_path, 'wb') as token:
+                        pickle.dump(creds, token)
+                    print("✅ 認証情報を保存しました")
 
             except GoogleAuthError as err:
                 print(f'❌ 認証エラー: {err}')
                 raise
-
-            # 次回実行のために認証情報を保存
-            with open(token_path, 'wb') as token:
-                pickle.dump(creds, token)
-            print("✅ 認証情報を保存しました")
+        else:
+            print("✅ キャッシュされた認証情報を使用")
 
         return creds
 

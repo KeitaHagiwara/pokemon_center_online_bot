@@ -39,7 +39,7 @@ def main(driver, appium_utils, user_info, log_callback=None):
     try:
 
         # ログイン処理
-        is_logged_in = login_pokemon_center_online(driver, email, password)
+        is_logged_in = login_pokemon_center_online(driver, appium_utils, email, password)
         if not is_logged_in:
             raise Exception("ログインに失敗しました")
 

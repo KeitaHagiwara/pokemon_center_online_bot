@@ -9,7 +9,7 @@ from utils.gmail import extract_target_str_from_gmail_text_in_3min
 
 MAX_RETRY_PASSCODE = 20
 
-def login_pokemon_center_online(driver, email, password):
+def login_pokemon_center_online(driver, appium_utils, email, password):
 
     try:
         # ログイン画面に遷移
@@ -73,6 +73,41 @@ def login_pokemon_center_online(driver, email, password):
         time.sleep(10)
         if ("パスコード入力" in driver.page_source and "/login-mfa/" in driver.current_url):
             raise Exception("2段階認証に失敗しました")
+
+        if "利用規約再同意" in driver.page_source:
+            # 同意チェックボックスを安全に取得してクリック
+            terms_checkboxes = appium_utils.safe_find_elements(
+                AppiumBy.ID,
+                'terms',
+                attempt=0
+            )
+            if not terms_checkboxes or len(terms_checkboxes) == 0:
+                raise ValueError("同意チェックボックスが見つかりませんでした")
+
+            terms_checkbox = terms_checkboxes[0]
+            terms_checkbox.click()
+            time.sleep(random.uniform(1, 3))
+
+            # プライバシーチェックボックスを安全に取得してクリック
+            privacy_policy_checkboxes = appium_utils.safe_find_elements(
+                AppiumBy.ID,
+                'privacyPolicy',
+                attempt=0
+            )
+            if not privacy_policy_checkboxes or len(privacy_policy_checkboxes) == 0:
+                raise ValueError("プライバシーチェックボックスが見つかりませんでした")
+            privacy_policy_checkbox = privacy_policy_checkboxes[0]
+            privacy_policy_checkbox.click()
+            time.sleep(random.uniform(1, 3))
+
+            # 次へ進むボタンを安全に取得してクリック
+            if appium_utils.wait_and_click_element(AppiumBy.ID, 'terms_button'):
+                print("✅ 利用規約同意の次へ進むボタンをクリックしました")
+            else:
+                print("❌ 利用規約同意の次へ進むボタンのクリックに失敗しました")
+
+            time.sleep(10)
+
 
         return True
 

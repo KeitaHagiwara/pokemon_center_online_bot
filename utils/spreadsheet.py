@@ -245,6 +245,53 @@ class SpreadsheetApiClient:
             registration_user_info_list.append(user_info)
         return registration_user_info_list
 
+    def extract_change_address_user_info(self, all_data, start_row=4, end_row=5):
+        """
+        スプレッドシートの全データから住所変更を行うユーザー情報を抽出する
+
+        Args:
+            all_data (list): スプレッドシートの全データ
+            start_row (int): 抽出を開始する行番号（1始まり）
+            end_row (int or None): 抽出を終了する行番号（1始まり）、Noneの場合は最後の行まで
+
+        Returns:
+            list: ユーザー情報のリスト
+        """
+
+        change_address_user_info_list = []
+
+        required_columns = ['メールアドレス', 'パスワード', '郵便番号', '番地', '建物名・部屋番号']
+
+        column_dict = self.get_column_dict(all_data)
+        for col in required_columns:
+            if col not in column_dict:
+                print(f"エラー: '{col}' 列が見つかりません。")
+                return change_address_user_info_list
+
+        for row_number, row in enumerate(all_data[start_row - 1:end_row]):
+            # 住所変更の対象の場合のみ処理を実行
+            if row[column_dict.get('住所変更') - 1].strip() == "⚪︎":
+                # 必須情報が不足している場合はスキップ
+                is_skip = False
+                for col in required_columns:
+                    if not row[column_dict.get(col) - 1].strip():
+                        print(f"スキップ: 行 {row_number + start_row} は必須情報 '{col}' が不足しているため、スキップします。")
+                        is_skip = True
+                        break
+                if is_skip:
+                    continue
+
+                user_info = {
+                    'row_number': row_number + start_row,
+                    'email': row[column_dict.get('メールアドレス') - 1],
+                    'password': row[column_dict.get('パスワード') - 1],
+                    'postcode': row[column_dict.get('郵便番号') - 1],
+                    'street_address': row[column_dict.get('番地') - 1],
+                    'building': row[column_dict.get('建物名・部屋番号') - 1],
+                }
+                change_address_user_info_list.append(user_info)
+        return change_address_user_info_list
+
 
     def extract_payment_user_info(self, all_data, start_row=4, end_row=5, target_column="AA", top_p=1):
         """
