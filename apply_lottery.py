@@ -47,7 +47,7 @@ def main(driver, appium_utils, user_info, top_p=1, write_col='AA', log_callback=
         time.sleep(random.uniform(3, 5))
 
         for index in range(top_p):
-            display_logs(f"抽選申し込み処理を開始します (index={index})")
+            display_logs(log_callback, f"抽選申し込み処理を開始します (index={index})")
 
             try:
                 # 受付中の抽選かをチェックする
@@ -196,7 +196,7 @@ def exec_apply_lottery(start_row, end_row, write_col, top_p, log_callback=None):
             if not user_info.get("email") or not user_info.get("password"):
                 display_logs(log_callback, f"❌ emailまたはpasswordが未設定のためスキップします: {user_info}")
                 continue
-            main(driver, appium_utils, user_info, TOP_P, WRITE_COL, log_callback)
+            main(driver, appium_utils, user_info, top_p, write_col, log_callback)
 
         # 最低3分の待機時間を確保する
         display_logs(log_callback, "次のループまで3分間待機します...")

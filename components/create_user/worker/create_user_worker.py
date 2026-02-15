@@ -9,17 +9,20 @@ class CreateUserWorker(QThread):
     progress = Signal(str)
     finished = Signal(bool, str)
 
-    def __init__(self, start_row, end_row, stop_check_callback):
+    def __init__(self, start_row, end_row):
         """
         Args:
             start_row: 開始行
             end_row: 終了行
-            stop_check_callback: 停止チェック用のコールバック
         """
         super().__init__()
         self.start_row = start_row
         self.end_row = end_row
-        self.stop_check_callback = stop_check_callback
+        self._is_stopped = False
+
+    def stop(self):
+        """ワーカーを停止"""
+        self._is_stopped = True
 
     def run(self):
         """ワーカーのメイン処理"""

@@ -31,7 +31,7 @@ class CheckResultsWorker(QThread):
                 self.top_p,
                 log_callback=lambda msg: self.progress.emit(msg)
             )
-            self.finished.emit(True, "✅ 抽選結果取得が完了しました")
+            self.finished.emit(True, "抽選結果取得が完了しました")
         except Exception as e:
             error_msg = f"エラーが発生しました: {str(e)}"
             self.progress.emit(error_msg)

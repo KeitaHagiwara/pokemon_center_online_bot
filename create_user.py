@@ -97,7 +97,7 @@ def main(driver, appium_utils, user_info, log_callback=None):
         display_logs(log_callback, "--- Name Input ---")
         input_form(driver, AppiumBy.ID, "registration-form-fname", user_info["name"])
         # お名前(カナ)を入力
-        display_logs("--- Name Kana Input ---")
+        display_logs(log_callback, "--- Name Kana Input ---")
         input_form(driver, AppiumBy.ID, "registration-form-kana", user_info["name_kana"])
         # 生年月日(年)を入力
         display_logs(log_callback, "--- Birth Year Input ---")

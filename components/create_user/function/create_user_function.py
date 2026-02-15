@@ -27,8 +27,7 @@ def on_account_start(main_window, msg_show_time):
     # ワーカー開始
     main_window.account_worker = CreateUserWorker(
         start_row=start_row,
-        end_row=end_row,
-        stop_check_callback=lambda: getattr(main_window, 'account_stop_flag', False)
+        end_row=end_row
     )
     main_window.account_worker.progress.connect(lambda msg: on_account_progress(main_window, msg))
     main_window.account_worker.finished.connect(lambda success, msg: on_account_finished(main_window, success, msg, msg_show_time))

@@ -36,8 +36,7 @@ def on_payment_start(main_window, msg_show_time):
         start_row=start_row,
         end_row=end_row,
         write_col=write_col,
-        top_p=top_p,
-        stop_check_callback=lambda: getattr(main_window, 'payment_stop_flag', False)
+        top_p=top_p
     )
     main_window.payment_worker.progress.connect(lambda msg: on_payment_progress(main_window, msg))
     main_window.payment_worker.finished.connect(lambda success, msg: on_payment_finished(main_window, success, msg, msg_show_time))

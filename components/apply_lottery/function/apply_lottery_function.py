@@ -34,8 +34,7 @@ def on_lottery_start(main_window, msg_show_time):
         start_row=start_row,
         end_row=end_row,
         write_col=write_col,
-        top_p=top_p,
-        stop_check_callback=lambda: getattr(main_window, 'lottery_stop_flag', False)
+        top_p=top_p
     )
     main_window.lottery_worker.progress.connect(lambda msg: on_lottery_progress(main_window, msg))
     main_window.lottery_worker.finished.connect(lambda success, msg: on_lottery_finished(main_window, success, msg, msg_show_time))

@@ -69,6 +69,7 @@ def main(driver, appium_utils, user_info, log_callback=None):
                         # 抽選結果を安全に取得
                         lottery_results = appium_utils.safe_find_elements(AppiumBy.CLASS_NAME, 'txtBox01', attempt=index)
                         target_lottery_result = lottery_results[index].get_attribute('innerText')
+                        target_lottery_result = "応募済み" if target_lottery_result == "応募中" else target_lottery_result
 
                         display_logs(log_callback, f"抽選結果: {target_lottery_result}")
                         # 抽選結果が「当選」の場合のみスプレッドシートに書き込む
