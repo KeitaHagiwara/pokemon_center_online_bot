@@ -30,7 +30,9 @@ class ShippingStatusWorker(QThread):
                 self.top_p,
                 log_callback=lambda msg: self.progress.emit(msg)
             )
-            self.finished.emit(True, "発送ステータス確認が完了しました")
+            if not self._is_stopped:
+                self.finished.emit(True, "発送ステータス確認が完了しました")
         except Exception as e:
-            error_message = f"エラーが発生しました: {str(e)}"
-            self.finished.emit(False, error_message)
+            if not self._is_stopped:
+                error_message = f"エラーが発生しました: {str(e)}"
+                self.finished.emit(False, error_message)

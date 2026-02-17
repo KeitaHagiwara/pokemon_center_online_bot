@@ -39,6 +39,9 @@ class MakePaymentWorker(QThread):
                 top_p=self.top_p,
                 log_callback=lambda msg: self.progress.emit(msg)
             )
-            self.finished.emit(True, "決済処理が完了しました")
+            if not self._is_stopped:
+                self.finished.emit(True, "決済処理が完了しました")
         except Exception as e:
-            self.finished.emit(False, f"エラーが発生しました: {str(e)}")
+            if not self._is_stopped:
+                error_message = f"エラーが発生しました: {str(e)}"
+                self.finished.emit(False, error_message)

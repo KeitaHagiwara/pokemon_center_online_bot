@@ -26,6 +26,7 @@ from components.check_results.ui.check_results_tab import create_check_results_t
 from components.make_payment.ui.make_payment_tab import create_make_payment_tab
 from components.shipping_status.ui.shipping_status_tab import create_shipping_status_tab
 from components.create_user.ui.create_user_tab import create_create_user_tab
+from components.change_address.ui.change_address_tab import create_change_address_tab
 from components.service_settings.ui.service_settings_tab import create_service_settings_tab
 
 # 機能関数のインポート
@@ -59,6 +60,12 @@ from components.create_user.function.create_user_function import (
     on_account_finished,
     on_account_stop
 )
+from components.change_address.function.change_address_function import (
+    on_change_address_start,
+    on_change_address_progress,
+    on_change_address_finished,
+    on_change_address_stop
+)
 from components.service_settings.function.service_settings_function import (
     on_upload_json,
     on_upload_credentials,
@@ -91,6 +98,7 @@ class MainWindow(QMainWindow):
         self.payment_worker = None  # 決済処理ワーカー
         self.shipping_worker = None  # 発送ステータス確認ワーカー
         self.account_worker = None  # アカウント作成ワーカー
+        self.change_address_worker = None  # 住所変更ワーカー
         self.gmail_worker = None  # Gmailログインワーカー
         self.init_ui()
 
@@ -138,6 +146,9 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(shipping_tab, "発送ステータス確認")
         account_tab = create_create_user_tab(self, START_ROW_DEFAULT, MAX_ROW)
         self.tabs.addTab(account_tab, "アカウント作成")
+        # 住所変更タブを追加
+        change_address_tab = create_change_address_tab(self, START_ROW_DEFAULT, MAX_ROW)
+        self.tabs.addTab(change_address_tab, "住所変更")
         self.create_settings_tab()
 
         # ステータスバー
@@ -287,6 +298,22 @@ class MainWindow(QMainWindow):
     def on_account_stop(self):
         """アカウント作成停止 - 外部関数を呼び出し"""
         on_account_stop(self, MSG_SHOW_TIME)
+
+    def on_change_address_start(self):
+        """住所変更処理開始 - 外部関数を呼び出し"""
+        on_change_address_start(self, MSG_SHOW_TIME)
+
+    def on_change_address_progress(self, message):
+        """住所変更処理の進捗を表示 - 外部関数を呼び出し"""
+        on_change_address_progress(self, message)
+
+    def on_change_address_finished(self, success, message):
+        """住所変更処理完了時の処理 - 外部関数を呼び出し"""
+        on_change_address_finished(self, success, message, MSG_SHOW_TIME)
+
+    def on_change_address_stop(self):
+        """住所変更処理停止 - 外部関数を呼び出し"""
+        on_change_address_stop(self, MSG_SHOW_TIME)
 
 
 def main():

@@ -62,16 +62,6 @@ def create_shipping_status_tab(main_window, START_ROW_DEFAULT, MAX_ROW):
     settings_group.setLayout(settings_layout)
     layout.addWidget(settings_group)
 
-    # ログ表示エリア
-    log_group = QGroupBox("実行ログ")
-    log_layout = QVBoxLayout()
-    main_window.shipping_log = QTextEdit()
-    main_window.shipping_log.setReadOnly(True)
-    main_window.shipping_log.setPlaceholderText("実行ログがここに表示されます...")
-    log_layout.addWidget(main_window.shipping_log)
-    log_group.setLayout(log_layout)
-    layout.addWidget(log_group)
-
     # 実行ボタン
     button_layout = QHBoxLayout()
     start_button = QPushButton("発送ステータス確認開始")
@@ -111,6 +101,16 @@ def create_shipping_status_tab(main_window, START_ROW_DEFAULT, MAX_ROW):
     button_layout.addWidget(stop_button)
     button_layout.addStretch()
     layout.addLayout(button_layout)
+
+    # ログ表示エリア
+    log_group = QGroupBox("実行ログ")
+    log_layout = QVBoxLayout()
+    main_window.shipping_log = QTextEdit()
+    main_window.shipping_log.setReadOnly(True)
+    main_window.shipping_log.setPlaceholderText("実行ログがここに表示されます...")
+    log_layout.addWidget(main_window.shipping_log)
+    log_group.setLayout(log_layout)
+    layout.addWidget(log_group)
 
     shipping_widget.setLayout(layout)
     return shipping_widget

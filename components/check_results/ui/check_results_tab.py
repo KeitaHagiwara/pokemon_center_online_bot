@@ -62,16 +62,6 @@ def create_check_results_tab(main_window, start_row_default, max_row):
     settings_group.setLayout(settings_layout)
     layout.addWidget(settings_group)
 
-    # ログ表示エリア
-    log_group = QGroupBox("実行ログ")
-    log_layout = QVBoxLayout()
-    main_window.result_log = QTextEdit()
-    main_window.result_log.setReadOnly(True)
-    main_window.result_log.setPlaceholderText("実行ログがここに表示されます...")
-    log_layout.addWidget(main_window.result_log)
-    log_group.setLayout(log_layout)
-    layout.addWidget(log_group)
-
     # 実行ボタン
     button_layout = QHBoxLayout()
     start_button = QPushButton("結果取得開始")
@@ -111,6 +101,16 @@ def create_check_results_tab(main_window, start_row_default, max_row):
     button_layout.addWidget(stop_button)
     button_layout.addStretch()
     layout.addLayout(button_layout)
+
+    # ログ表示エリア
+    log_group = QGroupBox("実行ログ")
+    log_layout = QVBoxLayout()
+    main_window.result_log = QTextEdit()
+    main_window.result_log.setReadOnly(True)
+    main_window.result_log.setPlaceholderText("実行ログがここに表示されます...")
+    log_layout.addWidget(main_window.result_log)
+    log_group.setLayout(log_layout)
+    layout.addWidget(log_group)
 
     result_widget.setLayout(layout)
     return result_widget

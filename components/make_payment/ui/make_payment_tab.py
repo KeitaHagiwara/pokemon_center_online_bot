@@ -64,16 +64,6 @@ def create_make_payment_tab(main_window, start_row_default, max_row):
     settings_group.setLayout(settings_layout)
     layout.addWidget(settings_group)
 
-    # ログ表示エリア
-    log_group = QGroupBox("実行ログ")
-    log_layout = QVBoxLayout()
-    main_window.payment_log = QTextEdit()
-    main_window.payment_log.setReadOnly(True)
-    main_window.payment_log.setPlaceholderText("実行ログがここに表示されます...")
-    log_layout.addWidget(main_window.payment_log)
-    log_group.setLayout(log_layout)
-    layout.addWidget(log_group)
-
     # 実行ボタン
     button_layout = QHBoxLayout()
     start_button = QPushButton("決済処理開始")
@@ -113,6 +103,16 @@ def create_make_payment_tab(main_window, start_row_default, max_row):
     button_layout.addWidget(stop_button)
     button_layout.addStretch()
     layout.addLayout(button_layout)
+
+    # ログ表示エリア
+    log_group = QGroupBox("実行ログ")
+    log_layout = QVBoxLayout()
+    main_window.payment_log = QTextEdit()
+    main_window.payment_log.setReadOnly(True)
+    main_window.payment_log.setPlaceholderText("実行ログがここに表示されます...")
+    log_layout.addWidget(main_window.payment_log)
+    log_group.setLayout(log_layout)
+    layout.addWidget(log_group)
 
     payment_widget.setLayout(layout)
     return payment_widget
