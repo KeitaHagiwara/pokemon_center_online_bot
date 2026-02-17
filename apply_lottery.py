@@ -179,6 +179,11 @@ def main(driver, appium_utils, user_info, top_p=1, write_col='AA', log_callback=
 def exec_apply_lottery(start_row, end_row, write_col, top_p, log_callback=None):
     """UIから呼び出す用のラッパー関数"""
 
+    display_logs(log_callback, "Appiumドライバーを初期化中...")
+    appium_utils = AppiumUtilities()
+    display_logs(log_callback, "Safariを起動しました")
+    driver = appium_utils.driver
+
     for loop in range(RETRY_LOOP):
         display_logs(log_callback, f"{loop+1}回目の処理を開始します")
 
@@ -194,13 +199,6 @@ def exec_apply_lottery(start_row, end_row, write_col, top_p, log_callback=None):
         if not user_info_list:
             display_logs(log_callback, "決済対象ユーザーが存在しないため、処理を終了します。")
             break
-
-        display_logs(log_callback, "Appiumドライバーを初期化中...")
-        appium_utils = AppiumUtilities()
-
-        display_logs(log_callback, "Safariを起動しました")
-
-        driver = appium_utils.driver
 
         for user_info in user_info_list:
             display_logs(log_callback, msg=f"ラベル: {user_info.get('label')}のユーザー情報の処理を開始します。")
@@ -218,8 +216,13 @@ if __name__ == '__main__':
     TOP_P = 1 # 抽選申し込みを行う上位件件数
     WRITE_COL = 'AD'  # 抽選申し込み結果を書き込む列
 
-    START_ROW = 34
-    END_ROW = 36
+    START_ROW = 61
+    END_ROW = 89
+
+    print("Appiumドライバーを初期化中...")
+    appium_utils = AppiumUtilities()
+    print("Safariを起動しました")
+    driver = appium_utils.driver
 
     for loop in range(RETRY_LOOP):
         print(f"{loop+1}回目の処理を開始します")
@@ -234,13 +237,6 @@ if __name__ == '__main__':
         if not user_info_list:
             print("決済対象ユーザーが存在しないため、処理を終了します。")
             break
-
-        print("Appiumドライバーを初期化中...")
-        appium_utils = AppiumUtilities()
-
-        print("Safariを起動しました")
-
-        driver = appium_utils.driver
 
         for user_info in user_info_list:
             if not user_info.get("email") or not user_info.get("password"):

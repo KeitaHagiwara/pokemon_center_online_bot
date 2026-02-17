@@ -209,29 +209,42 @@ def main(driver, appium_utils, user_info, log_callback=None):
 def exec_create_new_accounts(start_row, end_row, log_callback=None):
     """UIから呼び出す用のラッパー関数"""
 
-    all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
-
-    registration_user_info_list = ss.extract_registration_user_info(all_data, start_row, end_row)
-    display_logs(log_callback=None, msg=json.dumps(registration_user_info_list, indent=2, ensure_ascii=False))
-    display_logs(log_callback, "---------------")
-    display_logs(log_callback, f"作成するユーザー数: {len(registration_user_info_list)}")
-    display_logs(log_callback, "---------------")
-
     display_logs(log_callback, "Appiumドライバーを初期化中...")
     appium_utils = AppiumUtilities()
-
     display_logs(log_callback, "Safariを起動しました")
-
     driver = appium_utils.driver
 
-    # ユーザー登録実行処理
-    for user_info in registration_user_info_list:
-        main(driver, appium_utils, user_info, log_callback)
+    for loop in range(RETRY_LOOP):
+        all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
+
+        registration_user_info_list = ss.extract_registration_user_info(all_data, start_row, end_row)
+        display_logs(log_callback=None, msg=json.dumps(registration_user_info_list, indent=2, ensure_ascii=False))
+        display_logs(log_callback, "---------------")
+        display_logs(log_callback, f"作成するユーザー数: {len(registration_user_info_list)}")
+        display_logs(log_callback, "---------------")
+
+        if not registration_user_info_list:
+            print("決済対象ユーザーが存在しないため、処理を終了します。")
+            break
+
+        # ユーザー登録実行処理
+        for user_info in registration_user_info_list:
+            main(driver, appium_utils, user_info, log_callback)
+
+        # 最低3分の待機時間を確保する
+        print("次のループまで3分間待機します...")
+        time.sleep(180)
+
 
 if __name__ == '__main__':
 
     START_ROW = 75
     END_ROW = 165
+
+    print("Appiumドライバーを初期化中...")
+    appium_utils = AppiumUtilities()
+    print("Safariを起動しました")
+    driver = appium_utils.driver
 
     for loop in range(RETRY_LOOP):
         print(f"{loop+1}回目の処理を開始します")
@@ -246,13 +259,6 @@ if __name__ == '__main__':
         if not registration_user_info_list:
             print("決済対象ユーザーが存在しないため、処理を終了します。")
             break
-
-        print("Appiumドライバーを初期化中...")
-        appium_utils = AppiumUtilities()
-
-        print("Safariを起動しました")
-
-        driver = appium_utils.driver
 
         # ユーザー登録実行処理
         for user_info in registration_user_info_list:

@@ -278,32 +278,34 @@ def main(driver, appium_utils, user_info, log_callback=None):
 
 def exec_make_payment(start_row, end_row, write_col, top_p, log_callback=None):
 
-    # スプレッドシートの全データをDataFrame形式で取得
-    all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
-    user_info_list = ss.extract_payment_user_info(all_data, start_row, end_row, write_col, top_p)
-
-    display_logs(log_callback=None, msg=json.dumps(user_info_list, indent=2, ensure_ascii=False))
-    display_logs(log_callback, "---------------")
-    display_logs(log_callback, f"合計ユーザー数: {len(user_info_list)}")
-    display_logs(log_callback, "---------------")
-    if not user_info_list:
-        display_logs(log_callback, "決済対象ユーザーが存在しないため、処理を終了します。")
-        return
-
     display_logs(log_callback, "Appiumドライバーを初期化中...")
     appium_utils = AppiumUtilities()
-
     display_logs(log_callback, "Safariを起動しました")
-
     driver = appium_utils.driver
 
+    for loop in range(RETRY_LOOP):
+        # スプレッドシートの全データをDataFrame形式で取得
+        all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
+        user_info_list = ss.extract_payment_user_info(all_data, start_row, end_row, write_col, top_p)
 
-    for user_info in user_info_list:
-        display_logs(log_callback, msg=f"ラベル: {user_info.get('label')}のユーザー情報の処理を開始します。")
-        if not user_info.get("email") or not user_info.get("password"):
-            display_logs(log_callback, f"❌ emailまたはpasswordが未設定のためスキップします: {user_info}")
-            continue
-        main(driver, appium_utils, user_info, log_callback)
+        display_logs(log_callback=None, msg=json.dumps(user_info_list, indent=2, ensure_ascii=False))
+        display_logs(log_callback, "---------------")
+        display_logs(log_callback, f"合計ユーザー数: {len(user_info_list)}")
+        display_logs(log_callback, "---------------")
+        if not user_info_list:
+            display_logs(log_callback, "決済対象ユーザーが存在しないため、処理を終了します。")
+            return
+
+        for user_info in user_info_list:
+            display_logs(log_callback, msg=f"ラベル: {user_info.get('label')}のユーザー情報の処理を開始します。")
+            if not user_info.get("email") or not user_info.get("password"):
+                display_logs(log_callback, f"❌ emailまたはpasswordが未設定のためスキップします: {user_info}")
+                continue
+            main(driver, appium_utils, user_info, log_callback)
+
+        # 最低3分の待機時間を確保する
+        print("次のループまで3分間待機します...")
+        time.sleep(180)
 
 if __name__ == '__main__':
     WRITE_COL = 'Z'  # 抽選申し込み結果を書き込む列
@@ -311,6 +313,11 @@ if __name__ == '__main__':
 
     START_ROW = 4
     END_ROW = 87
+
+    print("Appiumドライバーを初期化中...")
+    appium_utils = AppiumUtilities()
+    print("Safariを起動しました")
+    driver = appium_utils.driver
 
     for loop in range(RETRY_LOOP):
         print(f"{loop+1}回目の処理を開始します")
@@ -326,14 +333,6 @@ if __name__ == '__main__':
         if not user_info_list:
             print("決済対象ユーザーが存在しないため、処理を終了します。")
             break
-
-        print("Appiumドライバーを初期化中...")
-        appium_utils = AppiumUtilities()
-
-        print("Safariを起動しました")
-
-        driver = appium_utils.driver
-
 
         for user_info in user_info_list:
             if not user_info.get("email") or not user_info.get("password"):

@@ -108,6 +108,11 @@ def main(driver, appium_utils, user_info, log_callback=None):
 def exec_check_shipping_status(start_row, end_row, write_col, top_p, log_callback=None):
     """UIから呼び出す用のラッパー関数"""
 
+    display_logs(log_callback, "Appiumドライバーを初期化中...")
+    appium_utils = AppiumUtilities()
+    display_logs(log_callback, "Safariを起動しました")
+    driver = appium_utils.driver
+
     # スプレッドシートの全データをDataFrame形式で取得
     all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
 
@@ -116,14 +121,6 @@ def exec_check_shipping_status(start_row, end_row, write_col, top_p, log_callbac
     display_logs(log_callback, msg="---------------")
     display_logs(log_callback, msg=f"合計ユーザー数: {len(user_info_list)}")
     display_logs(log_callback, msg="---------------")
-
-    display_logs(log_callback=log_callback, msg="Appiumドライバーを初期化中...")
-    appium_utils = AppiumUtilities()
-
-    display_logs(log_callback, msg="Safariを起動しました")
-    display_logs(log_callback, msg="")
-
-    driver = appium_utils.driver
 
     for user_info in user_info_list:
         display_logs(log_callback, msg=f"ラベル: {user_info.get('label')}のユーザー情報の処理を開始します。")
@@ -144,8 +141,10 @@ if __name__ == '__main__':
     START_ROW = 27
     END_ROW = 87
 
-    # for loop in range(RETRY_LOOP):
-    #     print(f"{loop+1}回目の処理を開始します")
+    print("Appiumドライバーを初期化中...")
+    appium_utils = AppiumUtilities()
+    print("Safariを起動しました")
+    driver = appium_utils.driver
 
     # スプレッドシートの全データをDataFrame形式で取得
     all_data = ss.get_all_data(spreadsheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME)
@@ -155,13 +154,6 @@ if __name__ == '__main__':
     print("---------------")
     print(f"合計ユーザー数: {len(user_info_list)}")
     print("---------------")
-
-    print("Appiumドライバーを初期化中...")
-    appium_utils = AppiumUtilities()
-
-    print("Safariを起動しました")
-
-    driver = appium_utils.driver
 
     for user_info in user_info_list:
         if not user_info.get("email") or not user_info.get("password"):
