@@ -164,8 +164,9 @@ def exec_change_payment_info(start_row, end_row, log_callback=None):
             main(driver, appium_utils, user_info, log_callback)
 
         # 最低3分の待機時間を確保する
-        print("次のループまで3分間待機します...")
-        time.sleep(180)
+        if loop < RETRY_LOOP - 1:
+            print("次のループまで3分間待機します...")
+            time.sleep(180)
 
 
 if __name__ == '__main__':
@@ -200,5 +201,6 @@ if __name__ == '__main__':
             main(driver, appium_utils, user_info)
 
         # 最低3分の待機時間を確保する
-        print("次のループまで3分間待機します...")
-        time.sleep(180)
+        if loop < RETRY_LOOP - 1:
+            print("次のループまで3分間待機します...")
+            time.sleep(180)

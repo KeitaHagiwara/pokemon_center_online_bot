@@ -43,7 +43,8 @@ def main(driver, appium_utils, user_info, log_callback=None):
         # ログイン処理
         is_logged_in = login_pokemon_center_online(driver, appium_utils, email, password)
         if not is_logged_in:
-            raise Exception("ログインに失敗しました")
+            display_logs(log_callback, "❌ ログインに失敗しました")
+            return False  # 例外を投げずにFalseを返す
 
         target_lottery_result = None
         for target_product_name, target_product_column in target_product_name_dict.items():
@@ -263,18 +264,24 @@ def main(driver, appium_utils, user_info, log_callback=None):
                     display_logs(log_callback, f"❌ 抽選申し込み {index + 1} でエラーが発生: {e}")
 
 
+        return True  # 成功を返す
+
     except Exception as e:
-        display_logs(log_callback, f"エラーが発生しました: {e}")
+        display_logs(log_callback, f"❌ エラーが発生しました: {e}")
+        return False  # エラー時はFalseを返す
 
     finally:
+        # 各ユーザー処理後に必ずブラウザキャッシュをクリア
+        # （成功・失敗に関わらず実行、ドライバーは維持）
         if not DEBUG_MODE:
-            # ドライバーを終了
-            display_logs(log_callback, "\nドライバーを終了中...")
-            appium_utils.delete_browser_page()
-            time.sleep(5)
-            display_logs(log_callback, "完了しました")
-        else:
-            pass
+            try:
+                display_logs(log_callback, "🔄 [finally] ブラウザキャッシュをクリア中...")
+                appium_utils.delete_browser_page()
+                time.sleep(2)
+                display_logs(log_callback, "✅ [finally] ブラウザキャッシュをクリアしました")
+            except Exception as e:
+                display_logs(log_callback, f"⚠️ [finally] ブラウザキャッシュのクリアに失敗: {e}")
+                # エラーが出ても処理は継続
 
 def exec_make_payment(start_row, end_row, write_col, top_p, log_callback=None):
 
@@ -297,15 +304,26 @@ def exec_make_payment(start_row, end_row, write_col, top_p, log_callback=None):
             return
 
         for user_info in user_info_list:
-            display_logs(log_callback, msg=f"ラベル: {user_info.get('label')}のユーザー情報の処理を開始します。")
+            display_logs(log_callback, msg=f"\nラベル: {user_info.get('label')}のユーザー情報の処理を開始します。")
             if not user_info.get("email") or not user_info.get("password"):
-                display_logs(log_callback, f"❌ emailまたはpasswordが未設定のためスキップします: {user_info}")
+                display_logs(log_callback, f"❌ emailまたはpasswordが未設定のためスキップします")
                 continue
-            main(driver, appium_utils, user_info, log_callback)
+
+            # ユーザー処理を実行（成功/失敗を受け取る）
+            success = main(driver, appium_utils, user_info, log_callback)
+
+            if success:
+                display_logs(log_callback, f"✅ ユーザー {user_info.get('label')} の処理が完了しました\n")
+            else:
+                display_logs(log_callback, f"⚠️ ユーザー {user_info.get('label')} の処理に失敗しました。次のユーザーに進みます\n")
+
+            # ユーザー間の待機時間
+            time.sleep(random.uniform(3, 5))
 
         # 最低3分の待機時間を確保する
-        print("次のループまで3分間待機します...")
-        time.sleep(180)
+        if loop < RETRY_LOOP - 1:
+            display_logs(log_callback, "次のループまで3分間待機します...")
+            time.sleep(180)
 
 if __name__ == '__main__':
     WRITE_COL = 'Z'  # 抽選申し込み結果を書き込む列
@@ -341,5 +359,6 @@ if __name__ == '__main__':
             main(driver, appium_utils, user_info)
 
         # 最低3分の待機時間を確保する
-        print("次のループまで3分間待機します...")
-        time.sleep(180)
+        if loop < RETRY_LOOP - 1:
+            print("次のループまで3分間待機します...")
+            time.sleep(180)

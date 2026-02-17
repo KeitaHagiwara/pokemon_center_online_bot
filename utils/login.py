@@ -7,7 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 # 自作モジュール
 from utils.gmail import extract_target_str_from_gmail_text_in_3min
 
-MAX_RETRY_PASSCODE = 20
+MAX_RETRY_PASSCODE = 10
 
 def login_pokemon_center_online(driver, appium_utils, email, password):
 
@@ -46,6 +46,7 @@ def login_pokemon_center_online(driver, appium_utils, email, password):
             raise Exception("ログインページに留まっています")
 
         # 2段階認証処理
+        auth_success = False
         for retry_j in range(MAX_RETRY_PASSCODE):
             auth_code = extract_target_str_from_gmail_text_in_3min(
                 to_email=email,
@@ -53,8 +54,12 @@ def login_pokemon_center_online(driver, appium_utils, email, password):
                 email_type="passcode"
             )
             if auth_code:
+                auth_success = True
                 break
             time.sleep(15)
+
+        if not auth_success:
+            raise Exception("2段階認証コードの取得に失敗しました")
 
         print("パスコードを入力中...")
         passcode_form = WebDriverWait(driver, 10).until(

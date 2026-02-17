@@ -40,6 +40,9 @@ class AppiumUtilities:
         options.webdriver_agent_url = None  # 自動検出させる
         options.clear_system_files = True  # システムファイルをクリア
 
+        # セッションタイムアウトを延長: この設定がないと、長時間操作しないとセッションが切れる可能性がある
+        options.new_command_timeout = 600  # 10分（秒単位）
+
         # デバッグ用の追加設定
         options.show_xcode_log = False  # Xcodeのビルドログを非表示（見やすくするため）
         options.use_prebuilt_wda = True  # ビルド済みWDAを使用（高速化）
@@ -47,6 +50,7 @@ class AppiumUtilities:
         options.wda_launch_timeout = 120000  # WDA起動タイムアウト(ms)を延長
         options.wda_local_port = 8100  # WDAのローカルポート
         options.wda_connection_timeout = 60000  # WDA接続タイムアウト(ms)
+        options.wda_startup_retry_interval = 20000  # WDA起動リトライ間隔(ms)
 
         # iOS 18対応の設定
         options.should_use_compact_responses = False  # コンパクトレスポンスを無効化
@@ -91,7 +95,14 @@ class AppiumUtilities:
                 time.sleep(2)
                 print("✅ トップページに遷移しました")
             except Exception as e:
-                print(f"トップページ遷移エラー: {e}")
+                error_message = str(e)
+                # セッションが無効な場合は、クリーンアップ処理をスキップ
+                if "session" in error_message.lower() or "NoSuchDriverError" in error_message:
+                    print(f"⚠️ ドライバーセッションが無効なため、クリーンアップ処理をスキップします")
+                    print(f"   詳細: {error_message}")
+                    return  # 早期リターンして後続処理をスキップ
+                else:
+                    print(f"⚠️ トップページ遷移エラー: {e}")
 
             # 方法2: JavaScriptでストレージとCookieをクリア
             try:
